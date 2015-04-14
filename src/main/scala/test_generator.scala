@@ -153,3 +153,59 @@ package SerialTests {
     }
   }
 }
+
+// A test that makes sure the verifier will fail
+package SerialTests {
+  class BrokenWordLoopback(channel_count: Int, word_bits: Int) extends Module {
+    class IO extends Bundle {
+      val passing      = Bool(OUTPUT)
+      val synchronized = Bool(OUTPUT)
+    }
+    val io = new IO
+
+    val passing      = Reg(init = Bool(true))
+    io.passing := passing
+    val synchronized = Reg(init = Bool(false))
+    io.synchronized := synchronized
+
+    // Simply loop together a generator and a verifier.
+    val word_generator = Module(new Serial.WordGenerator(channel_count, word_bits))
+    val word_verifier  = Module(new Serial.WordVerifier( channel_count, word_bits))
+    word_generator.io.tx <> word_verifier.io.rx
+
+    when (word_verifier.io.pass === Bool(false)) {
+      passing := Bool(false)
+    }
+    when (word_verifier.io.sync === Bool(true)) {
+      synchronized := Bool(true)
+    }
+
+    // This line breaks the loopback test
+    word_verifier.io.rx(channel_count / 2).bits := word_generator.io.tx(channel_count / 2).bits | UInt(1 << (word_bits / 2))
+  }
+
+  class FailingWordLoopbackTester(dut: SerialTests.WordLoopback, channel_count: Int)
+  extends Tester(dut) {
+    for (t <- 0 until 10240) {
+      step(1)
+    }
+
+    require(peek(dut.io.passing) == 0)
+    require(peek(dut.io.synchronized) == 1)
+  }
+
+  object FailingWordLoopbackTester {
+    def main(args: Array[String]): Unit = {
+      // This default configuration matches the Hurricane serial
+      // configuration, which is why it's the one we're testing.
+      val channel_count     = 8
+      val word_bits         = 32
+
+      chiselMainTest(args,
+                     () => Module(new WordLoopback(channel_count,
+                                                   word_bits)
+                                ))
+      { dut => new PassingWordLoopbackTester(dut, channel_count) }
+    }
+  }
+}
