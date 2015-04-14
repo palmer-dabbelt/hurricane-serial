@@ -1,4 +1,4 @@
-import chisel._
+import Chisel._
 
 package Serial {
   // A single, full-duplex channel as it appears on the phy.  These
