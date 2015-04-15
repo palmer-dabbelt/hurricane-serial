@@ -3,6 +3,7 @@ SBT ?= sbt
 # The list of test cases that are run when running "make check"
 CHECK += check/PassingWordLoopbackTester.out
 CHECK += check/FailingWordLoopbackTester.out
+CHECK += check/Encoder8b10bTester.out
 
 # Obtains the package version from SBT
 VERSION = $(shell cat build.sbt  |  grep "^version :=" | tail -n1 | cut -d' ' -f3 | sed 's/"//g')
