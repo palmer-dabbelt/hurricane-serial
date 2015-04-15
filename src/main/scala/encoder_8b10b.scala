@@ -2,6 +2,8 @@ import Chisel._
 
 package Serial {
   object Consts8b10b {
+    val max_mapping_word_width = 4
+
     // This is the 8b10b encoding from Wikipedia, these tables are
     // copied directly from
     // <http://en.wikipedia.org/wiki/8b/10b_encoding>.
@@ -61,7 +63,9 @@ package Serial {
     val io = new IO()
 
     // Generates lookup tables that do the encoding, by turning the
-    // strings I copied from Wikipedia to Vec[Vec[UInt]].
+    // strings I copied from Wikipedia to Vec[Bits] -- this is kind of
+    // shitty, because Vec[Vec[UInt]] (which is what I really wanted)
+    // doesn't generate efficient ROMs.
     def generate_lookup(description: Seq[String]) = {
       Vec(description
         .map(_.split(" +"))
@@ -72,11 +76,18 @@ package Serial {
           case 6 => Seq(vec(2), vec(3), vec(4), vec(5))
         })
         .map(vec => vec.map(element => UInt("b" + element)))
-        .map(Vec(_))
+        .flatten
         )
     }
     val lookup_5b6b = generate_lookup(Consts8b10b.mapping_5b6b)
     val lookup_3b4b = generate_lookup(Consts8b10b.mapping_3b4b)
+
+    // This helper function hides the exact indexing order from my
+    // user below, so I don't have to have a huge line in there.
+    def lookup(table: Vec[UInt], decoded_word: UInt) = {
+      table(decoded_word * UInt(Consts8b10b.max_mapping_word_width) +
+            rd)
+    }
 
     // This encodes the running disparity, where "0" means a RD of
     // "-1", and "1" means a RD of "1".
@@ -85,8 +96,8 @@ package Serial {
     val EDCBA = io.decoded(4, 0)
     val HGF   = io.decoded(7, 5)
 
-    val abcdei = lookup_5b6b(EDCBA)(rd)
-    val fgjh   = lookup_3b4b(HGF)(rd)
+    val abcdei = lookup(lookup_5b6b, EDCBA)
+    val fgjh   = lookup(lookup_3b4b, HGF)
 
     io.encoded := Cat(abcdei, fgjh)
   }
