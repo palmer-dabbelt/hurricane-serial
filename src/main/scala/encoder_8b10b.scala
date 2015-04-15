@@ -59,6 +59,7 @@ package Serial {
     class IO extends Bundle {
       val decoded = Bits(INPUT,  width = 8)
       val encoded = Bits(OUTPUT, width = 10)
+      val balance = Bool(OUTPUT)
     }
     val io = new IO()
 
@@ -84,9 +85,15 @@ package Serial {
 
     // This helper function hides the exact indexing order from my
     // user below, so I don't have to have a huge line in there.
-    def lookup(table: Vec[UInt], decoded_word: UInt) = {
+    def lookup(table: Vec[UInt], decoded_word: UInt, rd: UInt) = {
       table(decoded_word * UInt(Consts8b10b.max_mapping_word_width) +
-            rd)
+            rd ^ UInt(1))
+    }
+
+    // Checks to see if there's the same number of 1's and 0's, or a
+    // different number.
+    def mismatched(value: UInt) = {
+      PopCount(value) != PopCount(~value)
     }
 
     // This encodes the running disparity, where "0" means a RD of
@@ -96,10 +103,14 @@ package Serial {
     val EDCBA = io.decoded(4, 0)
     val HGF   = io.decoded(7, 5)
 
-    val abcdei = lookup(lookup_5b6b, EDCBA)
-    val fgjh   = lookup(lookup_3b4b, HGF)
+    val abcdei = lookup(lookup_5b6b, EDCBA, rd)
+    val fgjh   = lookup(lookup_3b4b, HGF,   rd ^ mismatched(abcdei))
 
-    io.encoded := Cat(abcdei, fgjh)
+    val encoded = Cat(fgjh, abcdei)
+    rd := rd ^ mismatched(encoded)
+
+    io.encoded := encoded
+    io.balance := rd
   }
 }
 
@@ -112,27 +123,46 @@ package SerialTests {
   import scala.collection.mutable.Set
 
   class Encoder8b10bTester(dut: Serial.Encoder8b10b) extends Tester(dut) {
-    // Here's the one version that's defined at Wikipedia
-    poke(dut.io.decoded, BigInt("00111111", 2))
-    step(1)
-    require(peek(dut.io.encoded) == BigInt("1010111001", 2))
+//    // Here's the one version that's defined at Wikipedia
+//    poke(dut.io.decoded, BigInt("00111111", 2))
+//    step(1)
+//    require(peek(dut.io.encoded) == BigInt("1010111001", 2))
 
     // Here we just go ahead and encode a bunch of stuff, with the
     // goal that we eventually get good coverage.
     val d2e = new HashMap[BigInt, Set[BigInt]] with MultiMap[BigInt, BigInt]
     val e2d = new HashMap[BigInt, Set[BigInt]] with MultiMap[BigInt, BigInt]
 
-    for (t <- 0 until 10240) {
+    // Count the numbers of zeros and ones, to ensure they stay even.
+    var zeroes = 1
+    var ones   = 0
+
+    for (t <- 0 until (1 << 17)) {
       val decoded = BigInt(8, rnd)
       poke(dut.io.decoded, decoded)
       step(1)
       val encoded = peek(dut.io.encoded)
 
+      // Check to make sure the code is almost a bijection (there can
+      // be up to two encoded values for each decoded value).
       d2e.addBinding(decoded, encoded)
       require(d2e.get(decoded).get.size <= 2)
-
       e2d.addBinding(encoded, decoded)
       require(e2d.get(encoded).get.size == 1)
+
+      // Ensure that there's a DC line balance, which is the whole
+      // point of 8b/10b.
+      for (i <- 0 until 10) {
+        if (i < encoded.bitLength && encoded.testBit(i))
+          ones += 1
+        else
+          zeroes += 1
+      }
+      require(math.abs(zeroes - ones) < 2)
+      if (zeroes > ones)
+        require(peek(dut.io.balance) == 0)
+      else
+        require(peek(dut.io.balance) == 1)
     }
   }
 
