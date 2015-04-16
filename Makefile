@@ -18,10 +18,14 @@ PACKAGE_NAME = $(shell pwd | xargs basename)
 all:
 
 # The "clean" rule removes everything that could have been generated
-# by this build.
+# by this build (distclean is the same).
 .PHONY: clean
 clean::
 	rm -rf obj project check target lib
+
+.PHONY: distclean
+distclean::
+	$(MAKE) clean
 
 # Runs all the tests, and the proceeds to look through the output to
 # make sure they passed.
