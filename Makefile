@@ -58,5 +58,5 @@ lib/lib$(PACKAGE_NAME).jar.$(VERSION): target/scala-$(SCALA_VERSION)/$(PACKAGE_N
 	cp -f $^ $@
 
 target/scala-$(SCALA_VERSION)/$(PACKAGE_NAME)_$(SCALA_VERSION)-$(VERSION).jar: src/main/scala/*.scala
-	sbt package
+	$(SBT) package
 	test -f $@
