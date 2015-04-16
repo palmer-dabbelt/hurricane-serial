@@ -193,6 +193,12 @@ package SerialTests {
                                                       // safe
       require(prev_bits.contains("000000") == false)
       require(prev_bits.contains("111111") == false)
+
+      // FIXME: Wikipedia explicitly says these aren't allowed in the
+      // encoding, but my reading of the rest of the spec appears to
+      // indicate that they are.  Did someone fuck something up?
+      // require(prev_bits.contains("0011111") == false)
+      // require(prev_bits.contains("1100000") == false)
     }
   }
 
