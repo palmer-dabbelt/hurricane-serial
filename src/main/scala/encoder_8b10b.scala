@@ -85,15 +85,29 @@ package Serial {
 
     // This helper function hides the exact indexing order from my
     // user below, so I don't have to have a huge line in there.
-    def lookup(table: Vec[UInt], decoded_word: UInt, rd: UInt) = {
+    def lookup(table: Vec[UInt], decoded_word: UInt, rd: UInt, run: UInt) = {
       table(decoded_word * UInt(Consts8b10b.max_mapping_word_width) +
-            rd ^ UInt(1))
+            rd ^ UInt(1) +
+            run * UInt(2)
+          )
     }
 
     // Checks to see if there's the same number of 1's and 0's, or a
     // different number.
     def mismatched(value: UInt) = {
       PopCount(value) != PopCount(~value)
+    }
+
+    // Checks to see if the possibility of a long run length exists
+    // for the given input/rd combination -- this presumes some amount
+    // of encoding table information, so you can't change those
+    // without changing this!
+    def check_run(x: UInt, rd: UInt) = {
+      val run = UInt(width = 1)
+      run := UInt(0)
+      when (rd === UInt(1)) { run := (x === UInt(11)) || (x === UInt(13)) || (x === UInt(14)) }
+      when (rd === UInt(0)) { run := (x === UInt(17)) || (x === UInt(18)) || (x === UInt(20)) }
+      run ^ UInt(1)
     }
 
     // This encodes the running disparity, where "0" means a RD of
@@ -103,8 +117,9 @@ package Serial {
     val EDCBA = io.decoded(4, 0)
     val HGF   = io.decoded(7, 5)
 
-    val abcdei = lookup(lookup_5b6b, EDCBA, rd)
-    val fgjh   = lookup(lookup_3b4b, HGF,   rd ^ mismatched(abcdei))
+    val abcdei = lookup(lookup_5b6b, EDCBA, rd, UInt(0))
+    val rd_after_abcdei = rd ^ mismatched(abcdei)
+    val fgjh   = lookup(lookup_3b4b, HGF, rd_after_abcdei, check_run(EDCBA, rd_after_abcdei))
 
     val encoded = Cat(fgjh, abcdei)
     rd := rd ^ mismatched(encoded)
@@ -194,11 +209,10 @@ package SerialTests {
       require(prev_bits.contains("000000") == false)
       require(prev_bits.contains("111111") == false)
 
-      // FIXME: Wikipedia explicitly says these aren't allowed in the
-      // encoding, but my reading of the rest of the spec appears to
-      // indicate that they are.  Did someone fuck something up?
-      // require(prev_bits.contains("0011111") == false)
-      // require(prev_bits.contains("1100000") == false)
+      // The additional logic inside check_run() should ensure that
+      // these patterns also can't exist.
+      require(prev_bits.contains("0011111") == false)
+      require(prev_bits.contains("1100000") == false)
     }
   }
 
