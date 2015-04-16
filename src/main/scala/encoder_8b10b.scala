@@ -137,6 +137,10 @@ package SerialTests {
     var zeroes = 1
     var ones   = 0
 
+    // Contains the previous bit pattern, which for simplicity's sake
+    // we assume starts by encoding 0x00.
+    var prev_bits = ""
+
     for (t <- 0 until (1 << 17)) {
       val decoded = BigInt(8, rnd)
       poke(dut.io.decoded, decoded)
@@ -163,6 +167,32 @@ package SerialTests {
         require(peek(dut.io.balance) == 0)
       else
         require(peek(dut.io.balance) == 1)
+
+      // Another property of the encoded bitstream is that there is a
+      // limit of 5 consecutive bits of the same value
+      def encoded_to_bitstring(encoded: BigInt): String = {
+        (0 until 10).map{i =>
+          if (i < encoded.bitLength && encoded.testBit(i))
+            "1"
+          else
+            "0"
+        }.mkString("")
+      }
+
+      def string_trunc_or_dont(in: String, end: Int): String = {
+        if (in.length <= end)
+          return in
+        else
+          return in.substring(0, end)
+      }
+
+      prev_bits = prev_bits + encoded_to_bitstring(encoded)
+      prev_bits = string_trunc_or_dont(prev_bits, 99) // 99 is
+                                                      // arbitrary,
+                                                      // but hopefully
+                                                      // safe
+      require(prev_bits.contains("000000") == false)
+      require(prev_bits.contains("111111") == false)
     }
   }
 
