@@ -138,11 +138,6 @@ package SerialTests {
   import scala.collection.mutable.Set
 
   class Encoder8b10bTester(dut: Serial.Encoder8b10b) extends Tester(dut) {
-//    // Here's the one version that's defined at Wikipedia
-//    poke(dut.io.decoded, BigInt("00111111", 2))
-//    step(1)
-//    require(peek(dut.io.encoded) == BigInt("1010111001", 2))
-
     // Here we just go ahead and encode a bunch of stuff, with the
     // goal that we eventually get good coverage.
     val d2e = new HashMap[BigInt, Set[BigInt]] with MultiMap[BigInt, BigInt]
