@@ -39,12 +39,12 @@ check:: $(CHECK)
 # The macheniry below actually runs the tests -- this rule runs the
 # Chisel tester code to generate an output log, and the one below
 # that's somewhat paired with it runs Chisel to generate an object.
-check/%.out: obj/check/%/stamp src/main/scala/*.scala
+check/%.out: obj/check/%/stamp
 	mkdir -p $(dir $@)
 	rm -f $@
 	$(SBT) "run-main SerialTests.$* --targetDir $(dir $^) --test" >& $@ || true
 
-obj/check/%/stamp: lib/lib$(PACKAGE_NAME).jar.$(VERSION) src/main/scala/*.scala
+obj/check/%/stamp: lib/lib$(PACKAGE_NAME).jar.$(VERSION)
 	rm -f $@
 	$(SBT) "run-main SerialTests.$* --targetDir $(dir $@) --compile --genHarness"
 	touch $@
