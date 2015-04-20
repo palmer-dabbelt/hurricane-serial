@@ -11,9 +11,9 @@ package Serial {
   // particular cycle -- this is just a hint, the controller must set
   // transmit_data to an idle pattern.
   class PhyChannel(encoded_word_bits: Int) extends Bundle {
-    val transmit_enabled = Bool(OUTPUT)
-    val transmit_data    = Bits(OUTPUT, width=encoded_word_bits)
-    val recieve_data     = Bits(INPUT, width=encoded_word_bits)
+    val tx_enabled = Bool(OUTPUT)
+    val tx_data    = Bits(OUTPUT, width=encoded_word_bits)
+    val rx_data    = Bits(INPUT, width=encoded_word_bits)
   }
 
   // Contains all the information that's necessary to make the phy
