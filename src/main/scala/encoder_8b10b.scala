@@ -4,13 +4,14 @@ package Serial {
   // A single 8b/10b encoder/decoder, attached to the phy (for actual
   // transmission) and to the rest of the chip (via the "controller"
   // IO bundle).
+  class Encoder8b10bIO extends Bundle {
+    val decoded = Bits(INPUT,  width = 8)
+    val encoded = Bits(OUTPUT, width = 10)
+    val balance = Bool(OUTPUT)
+  }
+
   class Encoder8b10b extends Module {
-    class IO extends Bundle {
-      val decoded = Bits(INPUT,  width = 8)
-      val encoded = Bits(OUTPUT, width = 10)
-      val balance = Bool(OUTPUT)
-    }
-    val io = new IO()
+    val io = new Encoder8b10bIO()
 
     // Generates lookup tables that do the encoding, by turning the
     // strings I copied from Wikipedia to Vec[Bits] -- this is kind of
