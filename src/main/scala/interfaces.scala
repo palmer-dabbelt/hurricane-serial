@@ -22,11 +22,10 @@ package Serial {
   // to know when the device has powered on) there's a generic
   // configuration object that's phy-specific that ends up being
   // passed up to the top level.
-  class PhyIO(encoded_word_bits: Int, channel_count: Int, config_bundle: Bundle) {
+  class PhyIO(encoded_word_bits: Int, channel_count: Int) {
     val power_on = Bool(OUTPUT)
     val powered  = Bool(INPUT)
     val reset    = Bool(OUTPUT)
-    val config   = config_bundle.clone()
     
     val channels = Vec.fill(channel_count){new PhyChannel(encoded_word_bits)}
   }
@@ -51,9 +50,8 @@ package Serial {
   }
 
   // The interface between the controller and the rest of the system.
-  class ControllerIO(word_bits: Int, channel_count: Int, phy_config_bundle: Bundle) extends Bundle {
+  class ControllerIO(word_bits: Int, channel_count: Int) extends Bundle {
     val reset      = Bool(INPUT)
-    val phy_config = phy_config_bundle.clone()
     val config     = new ControllerConfig()
     val channels = Vec.fill(channel_count){new SerialChannel(word_bits)}
   }
