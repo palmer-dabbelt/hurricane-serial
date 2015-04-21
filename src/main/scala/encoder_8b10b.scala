@@ -136,7 +136,7 @@ package SerialTests {
             "1"
           else
             "0"
-        }.mkString("")
+        }.mkString("").reverse
       }
 
       def string_trunc_or_dont(in: String, end: Int): String = {
