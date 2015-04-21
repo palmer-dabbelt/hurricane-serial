@@ -51,7 +51,7 @@ package Serial {
       // data item -- this tests the decoupled IO part.
       val valid = Module(new LFSR(20))
       valid.io.increment := Bool(true)
-      io.tx(i).valid := valid.io.bits(9)
+      io.tx(i).valid := valid.io.bits(5)
 
       val reg = Module(new LFSR(word_bits))
       io.tx(i).bits := reg.io.bits
