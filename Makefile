@@ -1,11 +1,11 @@
 SBT ?= sbt
 
 # The list of test cases that are run when running "make check"
-CHECK += check/PassingWordLoopbackTester.out
-CHECK += check/FailingWordLoopbackTester.out
-CHECK += check/Encoder8b10bTester.out
-CHECK += check/Decoder8b10bTester.out
-CHECK += check/Serial8b10bControllerTester.out
+CHECK += check/PassingWordLoopbackTester.out.gz
+CHECK += check/FailingWordLoopbackTester.out.gz
+CHECK += check/Encoder8b10bTester.out.gz
+CHECK += check/Decoder8b10bTester.out.gz
+CHECK += check/Serial8b10bControllerTester.out.gz
 
 # Obtains the package version from SBT
 VERSION = $(shell cat build.sbt  |  grep "^version :=" | tail -n1 | cut -d' ' -f3 | sed 's/"//g')
@@ -33,17 +33,17 @@ distclean::
 # make sure they passed.
 .PHONY: check
 check:: $(CHECK)
-	@for f in $^; do cat $$f | tail -n1 | grep -q 'success' && echo "PASS $$f" || true; done
-	@for f in $^; do cat $$f | tail -n1 | grep -q 'success' || echo "FAIL $$f" || true; done
-	@for f in $^; do cat $$f | tail -n1 | grep -q 'success'; done
+	@for f in $^; do gzip -dc $$f | tail -n1 | grep -q 'success' && echo "PASS $$f" || true; done
+	@for f in $^; do gzip -dc $$f | tail -n1 | grep -q 'success' || echo "FAIL $$f" || true; done
+	@for f in $^; do gzip -dc $$f | tail -n1 | grep -q 'success'; done
 
 # The macheniry below actually runs the tests -- this rule runs the
 # Chisel tester code to generate an output log, and the one below
 # that's somewhat paired with it runs Chisel to generate an object.
-check/%.out: obj/check/%/stamp
+check/%.out.gz: obj/check/%/stamp
 	mkdir -p $(dir $@)
 	rm -f $@
-	$(SBT) "run-main SerialTests.$* --targetDir $(dir $^) --test" >& $@ || true
+	$(SBT) "run-main SerialTests.$* --targetDir $(dir $^) --test" |& gzip > $@ || true
 
 obj/check/%/stamp: lib/lib$(PACKAGE_NAME).jar.$(VERSION)
 	rm -f $@
