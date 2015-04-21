@@ -101,7 +101,7 @@ package SerialTests {
     // we assume starts by encoding 0x00.
     var prev_bits = ""
 
-    for (t <- 0 until (1 << 19)) {
+    for (t <- 0 until (1 << 20)) {
       val decoded = BigInt(8, rnd)
       poke(dut.io.decoded, decoded)
       step(1)
