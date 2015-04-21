@@ -69,7 +69,6 @@ package Serial {
     val vHGFd   = lookup_4b3b_d(fgjh)
     val vHGFc   = lookup_4b3b_c(fgjh)
 
-
     // Each of the lookup tables actually has an extra bit attached to
     // the top that is TRUE whenever the encoded part-word matches in
     // that lookup table.
