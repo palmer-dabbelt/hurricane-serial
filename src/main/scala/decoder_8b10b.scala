@@ -54,7 +54,7 @@ package Serial {
     val lookup_6b5b_d = generate_lookup(Consts8b10b.mapping_5b6b, "1")
     val lookup_6b5b_c = generate_lookup(Consts8b10b.control_5b6b, "1")
     val lookup_4b3b_d = generate_lookup(Consts8b10b.mapping_3b4b, "1")
-    val lookup_4b3b_c = generate_lookup(Consts8b10b.mapping_3b4b, "1")
+    val lookup_4b3b_c = generate_lookup(Consts8b10b.control_3b4b, "1")
 
     // These signal names match the Wikipedia entry, but none of the
     // other ones do.
