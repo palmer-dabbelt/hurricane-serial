@@ -80,20 +80,21 @@ package Serial {
     for (i <- 0 until channel_count) {
       // We're always ready to accept input
       val ready = Module(new LFSR(20))
-      ready.io.increment := Bool(true)
-      io.rx(i).ready := ready.io.bits(10)
+      io.rx(i).ready := Bool(true)
 
       // This LFSR is synchronized with the transmitter because it
       // starts at the same value and only increments when a value
       // shows up.
       val reg = Module(new LFSR(word_bits))
-      reg.io.increment := (io.rx(i).valid & ready.io.bits(10))
+      reg.io.increment := io.rx(i).valid
 
-      when (io.rx(i).ready & (reg.io.bits != io.rx(i).bits)) {
+      val word = reg.io.bits(word_bits-1, 0)
+
+      when (io.rx(i).valid & (word != io.rx(i).bits)) {
         io.pass := Bool(false)
       }
 
-      when (reg.io.bits != io.rx(i).bits) {
+      when (word != io.rx(i).bits) {
         io.sync := Bool(false)
       }
     }
