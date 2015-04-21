@@ -53,10 +53,21 @@ package Serial {
     // of encoding table information, so you can't change those
     // without changing this!
     def check_run(x: UInt, rd: UInt) = {
-      val run = UInt(width = 1)
+      // FIXME: This shouldn't just be "10", but I figure that's long
+      // enough?  If I set it to something shorter then the indexing
+      // code actually truncates this, which is a pain.
+      val run = UInt(width = 10)
       run := UInt(0)
-      when (rd === UInt(1)) { run := (x === UInt(11)) || (x === UInt(13)) || (x === UInt(14)) }
-      when (rd === UInt(0)) { run := (x === UInt(17)) || (x === UInt(18)) || (x === UInt(20)) }
+      when (rd === UInt(1)) {
+        when ((x === UInt(11)) || (x === UInt(13)) || (x === UInt(14))) {
+          run := UInt(1)
+        }
+      }
+      when (rd === UInt(0)) {
+        when ((x === UInt(17)) || (x === UInt(18)) || (x === UInt(20))) {
+          run := UInt(1)
+        }
+      }
       run
     }
 
