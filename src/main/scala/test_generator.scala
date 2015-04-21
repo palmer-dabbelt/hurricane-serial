@@ -11,7 +11,7 @@ package Serial {
     }
     val io = new IO
 
-    val r = Reg(init = UInt(1, width = bit_width))
+    val r = Reg(init = UInt(3184 & ((1 << bit_width) - 1), width = bit_width))
     io.bits := r
 
     // The meat of the LFSR is actually a prime number generator,
