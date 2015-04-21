@@ -57,7 +57,7 @@ package Serial {
       run := UInt(0)
       when (rd === UInt(1)) { run := (x === UInt(11)) || (x === UInt(13)) || (x === UInt(14)) }
       when (rd === UInt(0)) { run := (x === UInt(17)) || (x === UInt(18)) || (x === UInt(20)) }
-      run ^ UInt(1)
+      run
     }
 
     // This encodes the running disparity, where "0" means a RD of
