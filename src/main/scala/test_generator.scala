@@ -79,7 +79,7 @@ package Serial {
 
     for (i <- 0 until channel_count) {
       // We're always ready to accept input
-      val ready = Module(new LFSR(12))
+      val ready = Module(new LFSR(20))
       ready.io.increment := Bool(true)
       io.rx(i).ready := ready.io.bits(10)
 
@@ -107,6 +107,7 @@ package SerialTests {
     class IO extends Bundle {
       val passing      = Bool(OUTPUT)
       val synchronized = Bool(OUTPUT)
+      val sent         = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
     }
     val io = new IO
 
@@ -126,16 +127,30 @@ package SerialTests {
     when (word_verifier.io.sync === Bool(true)) {
       synchronized := Bool(true)
     }
+
+    // Count the number of sent words, to ensure something went over
+    // the line.
+    val sent = Vec.fill(channel_count){ Reg(init = UInt(0, width = 32)) }
+    for (i <- 0 until channel_count) {
+      when (word_generator.io.tx(i).valid && word_verifier.io.rx(i).ready) {
+        sent(i) := sent(i) + UInt(1)
+      }
+      io.sent(i) := sent(i)
+    }
   }
 
   class PassingWordLoopbackTester(dut: SerialTests.WordLoopback, channel_count: Int)
   extends Tester(dut) {
-    for (t <- 0 until 10240) {
+    val iterations = (1 << 16)
+
+    for (t <- 0 until iterations) {
       step(1)
+      (0 until channel_count).map{ i => peek(dut.io.sent(i)) }
       require(peek(dut.io.passing) == 1)
     }
 
     require(peek(dut.io.synchronized) == 1)
+    (0 until channel_count).map{ i => require(peek(dut.io.sent(i)) > (iterations / 16)) }
   }
 
   object PassingWordLoopbackTester {
