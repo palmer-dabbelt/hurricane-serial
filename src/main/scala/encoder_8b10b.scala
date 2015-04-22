@@ -82,7 +82,7 @@ package Serial {
     val rd_after_abcdei = rd ^ mismatched(abcdei)
     val fgjh   = lookup(lookup_3b4b, HGF, rd_after_abcdei, check_run(EDCBA, rd_after_abcdei))
 
-    val encoded = Cat(fgjh, abcdei)
+    val encoded = Cat(abcdei, fgjh)
     rd := rd ^ mismatched(encoded)
 
     io.encoded := encoded
