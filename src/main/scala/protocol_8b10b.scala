@@ -131,7 +131,7 @@ package SerialTests {
   }
 
   class Serial8b10bControllerTester(dut: Serial8b10bControllerLoopback) extends Tester(dut) {
-    for (t <- 0 until (1 << 10)) {
+    for (t <- 0 until (1 << 20)) {
       step(1)
       (0 until 8).map{ i => peek(dut.io.tx_ready(i)) }
       (0 until 8).map{ i => peek(dut.io.tx_valid(i)) }
