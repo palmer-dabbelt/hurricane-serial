@@ -58,8 +58,8 @@ package Serial {
 
     // These signal names match the Wikipedia entry, but none of the
     // other ones do.
-    val abcdei = io.encoded(5, 0)
-    val fgjh   = io.encoded(9, 6)
+    val abcdei = io.encoded(9, 4)
+    val fgjh   = io.encoded(3, 0)
 
     // The lookups are actually a bit complicated here: each half of
     // the encoded word goes into two tables, one to decode data words
