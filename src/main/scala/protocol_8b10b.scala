@@ -141,7 +141,14 @@ package SerialTests {
       serial.io.ctl.channels(i).tx <> gen.io.tx(i)
 
       serial.io.phy.powered := Bool(true)
-      serial.io.phy.channels(i).rx_data := serial.io.phy.channels(i).tx_data
+
+      val old_word = Reg(init = Bits(0, width = 10))
+      old_word := serial.io.phy.channels(i).tx_data
+      val older_word = Reg(init = Bits(0, width = 10))
+      older_word := old_word
+      val double_word = Cat(older_word, old_word)
+      val skewed_word = double_word(UInt(1) + UInt(9), UInt(1))
+      serial.io.phy.channels(i).rx_data := skewed_word
 
       serial.io.ctl.channels(i).rx <> ver.io.rx(i)
 
@@ -178,7 +185,8 @@ package SerialTests {
   }
 
   class Serial8b10bControllerTester(dut: Serial8b10bControllerLoopback) extends Tester(dut) {
-    for (t <- 0 until (1 << 20)) {
+    for (t <- 0 until (1 << 12)) {
+      poke(dut.io.skew, 1)
       step(1)
       (0 until 8).map{ i => peek(dut.io.tx_ready(i)) }
       (0 until 8).map{ i => peek(dut.io.tx_valid(i)) }
