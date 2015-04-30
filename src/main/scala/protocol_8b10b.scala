@@ -4,17 +4,17 @@ package Serial {
   // A single 8b/10b encoder/decoder, attached to the phy (for actual
   // transmission) and to the rest of the chip (via the "controller"
   // IO bundle).
-  class Serial8b10bController(channel_count: Int)
-  extends Module {
-    class IO extends Bundle {
-      val phy = new PhyIO(encoded_word_bits = 10,
-                          channel_count = channel_count)
-      val ctl = new ControllerIO(word_bits = 8,
-                                 channel_count = channel_count)
-      val skew_count = Vec.fill(channel_count){ UInt(OUTPUT, width = log2Up(10)) }
-      val skew_found = Vec.fill(channel_count){ Bool(OUTPUT) }
-    }
-    val io = new IO()
+  class Serial8b10bControllerIO(channel_count: Int) extends Bundle {
+    val phy = new PhyIO(encoded_word_bits = 10,
+                        channel_count = channel_count)
+    val ctl = new ControllerIO(word_bits = 8,
+                               channel_count = channel_count)
+    val skew_count = Vec.fill(channel_count){ UInt(OUTPUT, width = log2Up(10)) }
+    val skew_found = Vec.fill(channel_count){ Bool(OUTPUT) }
+  }
+
+  class Serial8b10bController(channel_count: Int) extends Module {
+    val io = new Serial8b10bControllerIO(channel_count)
 
     // Just power the phy on right away, and route it any additional
     // configuration information it might care about.
@@ -34,15 +34,16 @@ package Serial {
 
   // Each channel of the phy is mostly independent.  One of these
   // modules is constructed to handle each of the channels.
+  class Channel8b10bControllerIO extends Bundle {
+    val phy = new PhyChannel(encoded_word_bits = 10)
+    val ctl = new SerialChannel(word_bits = 8)
+    val on  = Bool(INPUT)
+    val skew_found = Bool(OUTPUT)
+    val skew_count = UInt(OUTPUT, width = log2Up(10))
+  }
+
   class Channel8b10bController extends Module {
-    class IO extends Bundle {
-      val phy = new PhyChannel(encoded_word_bits = 10)
-      val ctl = new SerialChannel(word_bits = 8)
-      val on  = Bool(INPUT)
-      val skew_found = Bool(OUTPUT)
-      val skew_count = UInt(OUTPUT, width = log2Up(10))
-    }
-    val io = new IO
+    val io = new Channel8b10bControllerIO
 
     // Rx
     val previous_rx_data = Reg(init = Bits(0, width = 10))
@@ -97,30 +98,32 @@ package Serial {
 // Test cases for the 8b/10b encoder/decoder, running in a loopback
 // mode.
 package SerialTests {
+  class Serial8b10bControllerLoopbackIO(channel_count: Int) extends Bundle {
+    val pass = Bool(OUTPUT)
+    val sync = Bool(OUTPUT)
+    val skew = UInt(INPUT, width = 8)
+
+    // Output signals for debugging
+    val tx_ready = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val tx_valid = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val tx_count = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
+    val tx_data  = Vec.fill(channel_count){ UInt(OUTPUT, width = 8) }
+    val tx_enc   = Vec.fill(channel_count){ UInt(OUTPUT, width = 10) }
+    val rx_ready = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val rx_valid = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val rx_count = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
+    val rx_data  = Vec.fill(channel_count){ UInt(OUTPUT, width = 8) }
+    val rx_enc   = Vec.fill(channel_count){ UInt(OUTPUT, width = 10) }
+    val rx_skct  = Vec.fill(channel_count){ UInt(OUTPUT, width = log2Up(10)) }
+    val rx_skval = Vec.fill(channel_count){ Bool(OUTPUT) }
+  }
+
   class Serial8b10bControllerLoopback extends Module {
     val channel_count = 8
     val decoded_word_bits = 8
     val encoded_word_bits = 10
 
-    class IO extends Bundle {
-      val pass = Bool(OUTPUT)
-      val sync = Bool(OUTPUT)
-
-      // Output signals for debugging
-      val tx_ready = Vec.fill(channel_count){ Bool(OUTPUT) }
-      val tx_valid = Vec.fill(channel_count){ Bool(OUTPUT) }
-      val tx_count = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
-      val tx_data  = Vec.fill(channel_count){ UInt(OUTPUT, width = 8) }
-      val tx_enc   = Vec.fill(channel_count){ UInt(OUTPUT, width = 10) }
-      val rx_ready = Vec.fill(channel_count){ Bool(OUTPUT) }
-      val rx_valid = Vec.fill(channel_count){ Bool(OUTPUT) }
-      val rx_count = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
-      val rx_data  = Vec.fill(channel_count){ UInt(OUTPUT, width = 8) }
-      val rx_enc   = Vec.fill(channel_count){ UInt(OUTPUT, width = 10) }
-      val rx_skct  = Vec.fill(channel_count){ UInt(OUTPUT, width = log2Up(10)) }
-      val rx_skval = Vec.fill(channel_count){ Bool(OUTPUT) }
-    }
-    val io = new IO
+    val io = new Serial8b10bControllerLoopbackIO(channel_count)
 
     val serial = Module(new Serial.Serial8b10bController(channel_count))
     serial.io.ctl.reset := Bool(false)

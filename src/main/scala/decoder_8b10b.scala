@@ -98,15 +98,16 @@ package Serial {
 // encoder to check to make sure that every data word can actually be
 // decoded, nothing else.
 package SerialTests {
+  class Decoder8b10bLoopbackIO extends Bundle {
+    val i = UInt(INPUT,  width = 8)
+    val e = UInt(OUTPUT, width = 10)
+    val o = UInt(OUTPUT, width = 8)
+    val c = UInt(OUTPUT, width = 1)
+    val v = UInt(OUTPUT, width = 1)
+  }
+
   class Decoder8b10bLoopback extends Module {
-    class IO extends Bundle {
-      val i = UInt(INPUT,  width = 8)
-      val e = UInt(OUTPUT, width = 10)
-      val o = UInt(OUTPUT, width = 8)
-      val c = UInt(OUTPUT, width = 1)
-      val v = UInt(OUTPUT, width = 1)
-    }
-    val io = new IO
+    val io = new Decoder8b10bLoopbackIO
 
     val encoder = Module(new Serial.Encoder8b10b)
     val decoder = Module(new Serial.Decoder8b10b)

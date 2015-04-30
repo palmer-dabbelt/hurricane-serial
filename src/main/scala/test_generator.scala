@@ -4,12 +4,13 @@ package Serial {
   // A plain LFSR -- this doesn't self-synchronize, as it's designed
   // to make sure each and every word gets through and I don't want
   // anything muddling that up.
+  class LFSRIO(bit_width: Int) extends Bundle {
+    val bits         = Bits(OUTPUT, width = bit_width)
+    val increment    = Bool(INPUT)
+  }
+
   class LFSR(bit_width: Int) extends Module {
-    class IO extends Bundle {
-      val bits         = Bits(OUTPUT, width = bit_width)
-      val increment    = Bool(INPUT)
-    }
-    val io = new IO
+    val io = new LFSRIO(bit_width)
 
     val r = Reg(init = UInt(3184 & ((1 << bit_width) - 1), width = bit_width))
     io.bits := r
@@ -39,12 +40,12 @@ package Serial {
 
   // Generates a stream of random bits that are sometimes actually
   // valid.
-  class WordGenerator(channel_count: Int, word_bits: Int)
-  extends Module {
-    class IO extends Bundle {
-      val tx = Vec.fill(channel_count){ Decoupled(Bits(width = word_bits)) }
-    }
-    val io = new IO
+  class WordGeneratorIO(channel_count: Int, word_bits: Int) extends Bundle {
+    val tx = Vec.fill(channel_count){ Decoupled(Bits(width = word_bits)) }
+  }
+
+  class WordGenerator(channel_count: Int, word_bits: Int) extends Module {
+    val io = new WordGeneratorIO(channel_count, word_bits)
 
     for (i <- 0 until channel_count) {
       // Generates a random sequence that sometimes spits out a valid
@@ -63,14 +64,15 @@ package Serial {
   }
 
   // Checks a stream of words to make sure it matches with 
+  class WordVerifierIO(channel_count: Int, word_bits: Int) extends Bundle {
+    val rx   = Vec.fill(channel_count){ Decoupled(Bits(width = word_bits)).flip }
+    val pass = Bool(OUTPUT)
+    val sync = Bool(OUTPUT)
+  }
+
   class WordVerifier(channel_count: Int, word_bits: Int)
   extends Module {
-    class IO extends Bundle {
-      val rx   = Vec.fill(channel_count){ Decoupled(Bits(width = word_bits)).flip }
-      val pass = Bool(OUTPUT)
-      val sync = Bool(OUTPUT)
-    }
-    val io = new IO
+    val io = new WordVerifierIO(channel_count, word_bits)
 
     // The default state is to pass -- we only fail when there's an
     // input that doesn't match.
@@ -104,13 +106,14 @@ package Serial {
 // A test that ensures that tests that should pass actually do when
 // exposed to the generator.
 package SerialTests {
+  class WordLoopbackIO(channel_count: Int) extends Bundle {
+    val passing      = Bool(OUTPUT)
+    val synchronized = Bool(OUTPUT)
+    val sent         = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
+  }
+
   class WordLoopback(channel_count: Int, word_bits: Int) extends Module {
-    class IO extends Bundle {
-      val passing      = Bool(OUTPUT)
-      val synchronized = Bool(OUTPUT)
-      val sent         = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
-    }
-    val io = new IO
+    val io = new WordLoopbackIO(channel_count)
 
     val passing      = Reg(init = Bool(true))
     io.passing := passing
@@ -172,12 +175,13 @@ package SerialTests {
 
 // A test that makes sure the verifier will fail
 package SerialTests {
+  class BrokenWordLoopbackIO extends Bundle {
+    val passing      = Bool(OUTPUT)
+    val synchronized = Bool(OUTPUT)
+  }
+
   class BrokenWordLoopback(channel_count: Int, word_bits: Int) extends Module {
-    class IO extends Bundle {
-      val passing      = Bool(OUTPUT)
-      val synchronized = Bool(OUTPUT)
-    }
-    val io = new IO
+    val io = new BrokenWordLoopbackIO
 
     val passing      = Reg(init = Bool(true))
     io.passing := passing
