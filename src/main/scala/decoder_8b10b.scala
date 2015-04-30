@@ -20,7 +20,7 @@ package Serial {
     // is "valid", which outputs whether or not this is a valid
     // codeword, the next bit is "kind", which is "1" when this is a
     // data word, and the remaining bits are the data.
-    def generate_lookup(description: Seq[String], prefix: String) = {
+    private def generate_lookup(description: Seq[String], prefix: String) = {
       val table_depth_bits = description(0).split(" +")(2).trim.size
       val table_width_bits = description(0).split(" +")(1).trim.size
 
@@ -51,31 +51,31 @@ package Serial {
 
       Vec(set)
     }
-    val lookup_6b5b_d = generate_lookup(Consts8b10b.mapping_5b6b, "1")
-    val lookup_6b5b_c = generate_lookup(Consts8b10b.control_5b6b, "1")
-    val lookup_4b3b_d = generate_lookup(Consts8b10b.mapping_3b4b, "1")
-    val lookup_4b3b_c = generate_lookup(Consts8b10b.control_3b4b, "1")
+    private val lookup_6b5b_d = generate_lookup(Consts8b10b.mapping_5b6b, "1")
+    private val lookup_6b5b_c = generate_lookup(Consts8b10b.control_5b6b, "1")
+    private val lookup_4b3b_d = generate_lookup(Consts8b10b.mapping_3b4b, "1")
+    private val lookup_4b3b_c = generate_lookup(Consts8b10b.control_3b4b, "1")
 
     // These signal names match the Wikipedia entry, but none of the
     // other ones do.
-    val abcdei = io.encoded(9, 4)
-    val fgjh   = io.encoded(3, 0)
+    private val abcdei = io.encoded(9, 4)
+    private val fgjh   = io.encoded(3, 0)
 
     // The lookups are actually a bit complicated here: each half of
     // the encoded word goes into two tables, one to decode data words
     // and the other to decode the control words.
-    val vEDCBAd = lookup_6b5b_d(abcdei)
-    val vEDCBAc = lookup_6b5b_c(abcdei)
-    val vHGFd   = lookup_4b3b_d(fgjh)
-    val vHGFc   = lookup_4b3b_c(fgjh)
+    private val vEDCBAd = lookup_6b5b_d(abcdei)
+    private val vEDCBAc = lookup_6b5b_c(abcdei)
+    private val vHGFd   = lookup_4b3b_d(fgjh)
+    private val vHGFc   = lookup_4b3b_c(fgjh)
 
     // Each of the lookup tables actually has an extra bit attached to
     // the top that is TRUE whenever the encoded part-word matches in
     // that lookup table.
-    val lo_c = vEDCBAc(5)
-    val lo_d = vEDCBAd(5)
-    val hi_c = vHGFc(3)
-    val hi_d = vHGFd(3)
+    private val lo_c = vEDCBAc(5)
+    private val lo_d = vEDCBAd(5)
+    private val hi_c = vHGFc(3)
+    private val hi_d = vHGFd(3)
 
     // 
     io.valid   := Bool(false)
@@ -109,8 +109,8 @@ package SerialTests {
   class Decoder8b10bLoopback extends Module {
     val io = new Decoder8b10bLoopbackIO
 
-    val encoder = Module(new Serial.Encoder8b10b)
-    val decoder = Module(new Serial.Decoder8b10b)
+    private val encoder = Module(new Serial.Encoder8b10b)
+    private val decoder = Module(new Serial.Decoder8b10b)
 
     encoder.io.decoded := io.i
     decoder.io.encoded := encoder.io.encoded

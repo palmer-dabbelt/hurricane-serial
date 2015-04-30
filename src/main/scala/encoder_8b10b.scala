@@ -17,7 +17,7 @@ package Serial {
     // strings I copied from Wikipedia to Vec[Bits] -- this is kind of
     // shitty, because Vec[Vec[UInt]] (which is what I really wanted)
     // doesn't generate efficient ROMs.
-    def generate_lookup(description: Seq[String]) = {
+    private def generate_lookup(description: Seq[String]) = {
       Vec(description
         .map(_.split(" +"))
         .map(vec => vec.map(element => element.trim))
@@ -30,12 +30,13 @@ package Serial {
         .flatten
         )
     }
-    val lookup_5b6b = generate_lookup(Consts8b10b.mapping_5b6b)
-    val lookup_3b4b = generate_lookup(Consts8b10b.mapping_3b4b)
+    private val lookup_5b6b = generate_lookup(Consts8b10b.mapping_5b6b)
+    private val lookup_3b4b = generate_lookup(Consts8b10b.mapping_3b4b)
 
     // This helper function hides the exact indexing order from my
     // user below, so I don't have to have a huge line in there.
-    def lookup(table: Vec[UInt], decoded_word: UInt, rd: UInt, run: UInt) = {
+    private def lookup(table: Vec[UInt], decoded_word: UInt,
+                       rd: UInt, run: UInt) = {
       table(decoded_word * UInt(Consts8b10b.max_mapping_word_width) +
             rd ^ UInt(1) +
             run * UInt(2)
@@ -44,7 +45,7 @@ package Serial {
 
     // Checks to see if there's the same number of 1's and 0's, or a
     // different number.
-    def mismatched(value: UInt) = {
+    private def mismatched(value: UInt) = {
       PopCount(value) != PopCount(~value)
     }
 
@@ -52,7 +53,7 @@ package Serial {
     // for the given input/rd combination -- this presumes some amount
     // of encoding table information, so you can't change those
     // without changing this!
-    def check_run(x: UInt, rd: UInt) = {
+    private def check_run(x: UInt, rd: UInt) = {
       // FIXME: This shouldn't just be "10", but I figure that's long
       // enough?  If I set it to something shorter then the indexing
       // code actually truncates this, which is a pain.
@@ -73,16 +74,22 @@ package Serial {
 
     // This encodes the running disparity, where "0" means a RD of
     // "-1", and "1" means a RD of "1".
-    val rd = Reg(init = UInt(0, width = 1))
+    private val rd = Reg(init = UInt(0, width = 1))
 
-    val EDCBA = io.decoded(4, 0)
-    val HGF   = io.decoded(7, 5)
+    private val EDCBA = io.decoded(4, 0)
+    private val HGF   = io.decoded(7, 5)
 
-    val abcdei = lookup(lookup_5b6b, EDCBA, rd, UInt(0))
-    val rd_after_abcdei = rd ^ mismatched(abcdei)
-    val fgjh   = lookup(lookup_3b4b, HGF, rd_after_abcdei, check_run(EDCBA, rd_after_abcdei))
+    private val abcdei = lookup(lookup_5b6b,
+                                EDCBA,
+                                rd,
+                                UInt(0))
+    private val rd_after_abcdei = rd ^ mismatched(abcdei)
+    private val fgjh   = lookup(lookup_3b4b,
+                                HGF,
+                                rd_after_abcdei,
+                                check_run(EDCBA, rd_after_abcdei))
 
-    val encoded = Cat(abcdei, fgjh)
+    private val encoded = Cat(abcdei, fgjh)
     rd := rd ^ mismatched(encoded)
 
     io.encoded := encoded

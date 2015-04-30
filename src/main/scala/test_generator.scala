@@ -12,12 +12,13 @@ package Serial {
   class LFSR(bit_width: Int) extends Module {
     val io = new LFSRIO(bit_width)
 
-    val r = Reg(init = UInt(3184 & ((1 << bit_width) - 1), width = bit_width))
+    private val r = Reg(init = UInt(3184 & ((1 << bit_width) - 1),
+                                    width = bit_width))
     io.bits := r
 
     // The meat of the LFSR is actually a prime number generator,
     // which is implemented here in a super inefficient way.
-    def prime_p(i: Int): Boolean = {
+    private def prime_p(i: Int): Boolean = {
       if (i <= 1)
         false
       else if (i == 2)
@@ -25,15 +26,15 @@ package Serial {
       else
         !(2 to (i - 1)).exists(x => i % x == 0)
     }
-    val prime_stream = 2 #:: Stream.from(3,2).filter(prime_p)
-    val primes = prime_stream.takeWhile(_ <= bit_width).toArray
+    private val prime_stream = 2 #:: Stream.from(3,2).filter(prime_p)
+    private val primes = prime_stream.takeWhile(_ <= bit_width).toArray
 
     // The final part is just an XOR reduction of the prime-indexed
     // bits inside the register, with an extra check to make sure
     // there's an even number of primes (which is required to get a
     // good polynomial).
-    val bits = Vec(primes.map{r.toBools(_)})
-    val lo_bit = bits.toBits.xorR ^ (if (primes.size % 2 == 0) Bool(false) else r(0))
+    private val bits = Vec(primes.map{r.toBools(_)})
+    private val lo_bit = bits.toBits.xorR ^ (if (primes.size % 2 == 0) Bool(false) else r(0))
 
     when (io.increment) { r := Cat(lo_bit, r(bit_width-1, 1)) }
   }
@@ -115,14 +116,16 @@ package SerialTests {
   class WordLoopback(channel_count: Int, word_bits: Int) extends Module {
     val io = new WordLoopbackIO(channel_count)
 
-    val passing      = Reg(init = Bool(true))
+    private val passing      = Reg(init = Bool(true))
     io.passing := passing
-    val synchronized = Reg(init = Bool(false))
+    private val synchronized = Reg(init = Bool(false))
     io.synchronized := synchronized
 
     // Simply loop together a generator and a verifier.
-    val word_generator = Module(new Serial.WordGenerator(channel_count, word_bits))
-    val word_verifier  = Module(new Serial.WordVerifier( channel_count, word_bits))
+    private val word_generator = Module(new Serial.WordGenerator(channel_count,
+                                                                 word_bits))
+    private val word_verifier  = Module(new Serial.WordVerifier( channel_count,
+                                                                 word_bits))
     word_generator.io.tx <> word_verifier.io.rx
 
     when (word_verifier.io.pass === Bool(false)) {
@@ -134,7 +137,7 @@ package SerialTests {
 
     // Count the number of sent words, to ensure something went over
     // the line.
-    val sent = Vec.fill(channel_count){ Reg(init = UInt(0, width = 32)) }
+    private val sent = Vec.fill(channel_count){ Reg(init = UInt(0, width=32)) }
     for (i <- 0 until channel_count) {
       when (word_generator.io.tx(i).valid && word_verifier.io.rx(i).ready) {
         sent(i) := sent(i) + UInt(1)
@@ -183,14 +186,16 @@ package SerialTests {
   class BrokenWordLoopback(channel_count: Int, word_bits: Int) extends Module {
     val io = new BrokenWordLoopbackIO
 
-    val passing      = Reg(init = Bool(true))
+    private val passing      = Reg(init = Bool(true))
     io.passing := passing
-    val synchronized = Reg(init = Bool(false))
+    private val synchronized = Reg(init = Bool(false))
     io.synchronized := synchronized
 
     // Simply loop together a generator and a verifier.
-    val word_generator = Module(new Serial.WordGenerator(channel_count, word_bits))
-    val word_verifier  = Module(new Serial.WordVerifier( channel_count, word_bits))
+    private val word_generator = Module(new Serial.WordGenerator(channel_count,
+                                                                 word_bits))
+    private val word_verifier  = Module(new Serial.WordVerifier( channel_count,
+                                                                 word_bits))
     word_generator.io.tx <> word_verifier.io.rx
 
     when (word_verifier.io.pass === Bool(false)) {

@@ -46,14 +46,14 @@ package Serial {
     val io = new Channel8b10bControllerIO
 
     // Rx
-    val previous_rx_data = Reg(init = Bits(0, width = 10))
+    private val previous_rx_data = Reg(init = Bits(0, width = 10))
     previous_rx_data := io.phy.rx_data
 
-    val rxbuf = Cat(previous_rx_data, io.phy.rx_data)
+    private val rxbuf = Cat(previous_rx_data, io.phy.rx_data)
 
-    val skew_detected = Reg(init = Bool(false))
-    val skew_from_before = Reg(init = UInt(0, width = log2Up(10)))
-    val skew = (0 until 10).map(i => (rxbuf(i+9, i) === UInt("b1101111100")) || (rxbuf(i+9, i) === UInt("b0010110000")))
+    private val skew_detected = Reg(init = Bool(false))
+    private val skew_from_before = Reg(init = UInt(0, width = log2Up(10)))
+    private val skew = (0 until 10).map(i => (rxbuf(i+9, i) === UInt("b1101111100")) || (rxbuf(i+9, i) === UInt("b0010110000")))
     when (skew_detected === Bool(false)) {
       skew_detected := skew.foldLeft(Bool(false)){ (a, b) => a | b }
       when (skew(0)) { skew_from_before := UInt(0) }
@@ -70,13 +70,13 @@ package Serial {
     io.skew_count := skew_from_before
     io.skew_found := skew_detected
 
-    val dec = Module(new Decoder8b10b)
+    private val dec = Module(new Decoder8b10b)
     dec.io.encoded := (rxbuf >> skew_from_before)(9, 0)
     io.ctl.rx.bits := dec.io.decoded
     io.ctl.rx.valid := dec.io.valid && !dec.io.control && skew_detected
 
     // Tx
-    val enc = Module(new Encoder8b10b)
+    private val enc = Module(new Encoder8b10b)
     enc.io.decoded := io.ctl.tx.bits
     io.phy.tx_data := enc.io.encoded
     io.ctl.tx.ready := skew_detected
@@ -119,21 +119,23 @@ package SerialTests {
   }
 
   class Serial8b10bControllerLoopback extends Module {
-    val channel_count = 8
-    val decoded_word_bits = 8
-    val encoded_word_bits = 10
+    private val channel_count = 8
+    private val decoded_word_bits = 8
+    private val encoded_word_bits = 10
 
     val io = new Serial8b10bControllerLoopbackIO(channel_count)
 
-    val serial = Module(new Serial.Serial8b10bController(channel_count))
+    private val serial = Module(new Serial.Serial8b10bController(channel_count))
     serial.io.ctl.reset := Bool(false)
     serial.io.ctl.config.clock_divider := UInt(1)
 
-    val gen = Module(new Serial.WordGenerator(channel_count, decoded_word_bits))
-    val ver = Module(new Serial.WordVerifier( channel_count, decoded_word_bits))
+    private val gen = Module(new Serial.WordGenerator(channel_count,
+                                                      decoded_word_bits))
+    private val ver = Module(new Serial.WordVerifier( channel_count,
+                                                      decoded_word_bits))
 
-    val tx_count = Vec.fill(channel_count){ Reg(init = UInt(0, width = 32)) }
-    val rx_count = Vec.fill(channel_count){ Reg(init = UInt(0, width = 32)) }
+    private val tx_count = Vec.fill(channel_count){ Reg(init=UInt(0, width=32)) }
+    private val rx_count = Vec.fill(channel_count){ Reg(init=UInt(0, width=32)) }
 
     for (i <- 0 until channel_count) {
       serial.io.ctl.channels(i).tx <> gen.io.tx(i)
@@ -167,8 +169,8 @@ package SerialTests {
       io.rx_skval(i) := serial.io.skew_found(i)
     }
 
-    val pass = Reg(init = Bool(true))
-    val sync = Reg(init = Bool(false))
+    private val pass = Reg(init = Bool(true))
+    private val sync = Reg(init = Bool(false))
     when (ver.io.pass === Bool(false)) { pass := Bool(false) }
     when (ver.io.sync === Bool(true)) { sync := Bool(true) }
     io.pass := pass
