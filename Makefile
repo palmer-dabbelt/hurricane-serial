@@ -43,22 +43,28 @@ check:: $(CHECK)
 check/%.out.gz: obj/check/%/stamp
 	mkdir -p $(dir $@)
 	rm -f $@
-	$(SBT) "run-main SerialTests.$* --targetDir $(dir $^) --test" |& gzip > $@ || true
+	$(dir $<)/generate --test --targetDir $(dir $<)/targetDir |& gzip > $@ || true
 
-obj/check/%/stamp: lib/lib$(PACKAGE_NAME).jar.$(VERSION)
-	rm -f $@
-	$(SBT) "run-main SerialTests.$* --targetDir $(dir $@) --compile --genHarness"
+obj/check/%/stamp: obj/check/%/generate
+	rm -rf $(dir $@)/targetDir
+	mkdir -p $(dir $@)/targetDir
+	chisel-hdrtar | tar -xC $(dir $@)/targetDir
+	$^ --targetDir $(dir $@)/targetDir --genHarness --compile
 	touch $@
+
+obj/check/%/generate: lib/lib$(PACKAGE_NAME).jar
+	mkdir -p $(dir $@)
+	pscalald --main SerialTests.$* `pkg-config chisel --libs` $^ -o $@
 
 # Generates a library version of this project -- this isn't super
 # useful in and of itself, but it does allow me to avoid having sbt
 # build all my sources twice, and since sbt does all sorts of parallel
 # building itself this is nice.
-all: lib/lib$(PACKAGE_NAME).jar.$(VERSION)
-lib/lib$(PACKAGE_NAME).jar.$(VERSION): target/scala-$(SCALA_VERSION)/$(PACKAGE_NAME)_$(SCALA_VERSION)-$(VERSION).jar
+all: lib/lib$(PACKAGE_NAME).jar
+lib/lib$(PACKAGE_NAME).jar: target/scala-$(SCALA_VERSION)/$(PACKAGE_NAME)_$(SCALA_VERSION)-$(VERSION).jar
 	mkdir -p $(dir $@)
 	cp -f $^ $@
 
 target/scala-$(SCALA_VERSION)/$(PACKAGE_NAME)_$(SCALA_VERSION)-$(VERSION).jar: src/main/scala/*.scala
-	$(SBT) package
+	find src/main/scala -iname "*.scala" | xargs pscalac `pkg-config chisel --libs` -o $@
 	test -f $@
