@@ -174,8 +174,8 @@ package SerialTests {
 
       // The additional logic inside check_run() should ensure that
       // these patterns also can't exist.
-      require(prev_bits.contains("0011111") == false)
-      require(prev_bits.contains("1100000") == false)
+      require(prev_bits.contains("1111100") == false)
+      require(prev_bits.contains("0000011") == false)
     }
   }
 
