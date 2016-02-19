@@ -8,6 +8,7 @@ package Serial {
     val decoded = Bits(INPUT,  width = 8)
     val encoded = Bits(OUTPUT, width = 10)
     val balance = Bool(OUTPUT)
+    val control = Bool(INPUT)
   }
 
   class Encoder8b10b extends Module {
@@ -30,8 +31,17 @@ package Serial {
         .flatten
         )
     }
-    private val lookup_5b6b = generate_lookup(Consts8b10b.mapping_5b6b)
-    private val lookup_3b4b = generate_lookup(Consts8b10b.mapping_3b4b)
+    private val lookup_5b6b_d = generate_lookup(Consts8b10b.mapping_5b6b)
+    private val lookup_3b4b_d = generate_lookup(Consts8b10b.mapping_3b4b)
+    // NOTE: We don't need 12 control bits, so we are intentionally omitting the following symbols:
+    //  K.32.7
+    //  K.27.7
+    //  K.29.7
+    //  K.30.7
+    // This results in all control bits having the form K.28.x* which simplifies the control
+    // * K.28.7 should NOT be used as it complicates comma detection.
+    private val lookup_5b6b_c = generate_lookup(Consts8b10b.control_5b6b)
+    private val lookup_3b4b_c = generate_lookup(Consts8b10b.control_3b4b)
 
     // This helper function hides the exact indexing order from my
     // user below, so I don't have to have a huge line in there.
@@ -79,17 +89,37 @@ package Serial {
     private val EDCBA = io.decoded(4, 0)
     private val HGF   = io.decoded(7, 5)
 
-    private val abcdei = lookup(lookup_5b6b,
+    private val abcdei = lookup(lookup_5b6b_d,
                                 EDCBA,
                                 rd,
                                 UInt(0))
     private val rd_after_abcdei = rd ^ mismatched(abcdei)
-    private val fgjh   = lookup(lookup_3b4b,
+    private val fgjh   = lookup(lookup_3b4b_d,
                                 HGF,
                                 rd_after_abcdei,
                                 check_run(EDCBA, rd_after_abcdei))
 
-    private val encoded = Cat(abcdei, fgjh)
+    private val abcdei_c = lookup(lookup_5b6b_c,
+                                  EDCBA,
+                                  rd,
+                                  UInt(0))
+    private val rd_after_abcdei_c = rd ^ mismatched(abcdei_c)
+    private val fgjh_c   = lookup(lookup_3b4b_c,
+                                  HGF,
+                                  rd_after_abcdei_c,
+                                  check_run(EDCBA, rd_after_abcdei_c))
+
+    private val encoded = UInt(width = 10)
+    when(io.control) {
+      // FIXME: Enforce a valid control symbol (K.28.x)
+      // For now we'll just assume EDCBA === K.28 and require code not to use illegal codes
+      //assert(EDCBA === UInt("11100"))
+      //assert(Cat(HGF,EDCBA) != UInt("11111100")
+      encoded := Cat(abcdei_c, fgjh_c)
+    } .otherwise {
+      encoded := Cat(abcdei, fgjh)
+    }
+
     rd := rd ^ mismatched(encoded)
 
     io.encoded := encoded
@@ -174,8 +204,8 @@ package SerialTests {
 
       // The additional logic inside check_run() should ensure that
       // these patterns also can't exist.
-      require(prev_bits.contains("1111100") == false)
-      require(prev_bits.contains("0000011") == false)
+      require(prev_bits.contains("0011111") == false)
+      require(prev_bits.contains("1100000") == false)
     }
   }
 

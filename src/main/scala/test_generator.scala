@@ -42,7 +42,7 @@ package Serial {
   // Generates a stream of random bits that are sometimes actually
   // valid.
   class WordGeneratorIO(channel_count: Int, word_bits: Int) extends Bundle {
-    val tx = Vec.fill(channel_count){ Decoupled(Bits(width = word_bits)) }
+    val tx = Vec.fill(channel_count){ Decoupled(new SerialSymbol(word_bits)) }
   }
 
   class WordGenerator(channel_count: Int, word_bits: Int) extends Module {
@@ -56,7 +56,8 @@ package Serial {
       io.tx(i).valid := valid.io.bits(5)
 
       val reg = Module(new LFSR(word_bits))
-      io.tx(i).bits := reg.io.bits
+      io.tx(i).bits.bits := reg.io.bits
+      io.tx(i).bits.control := UInt(0)
 
       // In order to stay synchronized with the reciever we need to
       // only bump the data LFSR when something is actually sent.
@@ -66,7 +67,7 @@ package Serial {
 
   // Checks a stream of words to make sure it matches with 
   class WordVerifierIO(channel_count: Int, word_bits: Int) extends Bundle {
-    val rx   = Vec.fill(channel_count){ Decoupled(Bits(width = word_bits)).flip }
+    val rx   = Vec.fill(channel_count){ Decoupled(new SerialSymbol(word_bits)).flip }
     val pass = Bool(OUTPUT)
     val sync = Bool(OUTPUT)
   }
@@ -82,22 +83,21 @@ package Serial {
 
     for (i <- 0 until channel_count) {
       // We're always ready to accept input
-      val ready = Module(new LFSR(20))
       io.rx(i).ready := Bool(true)
 
       // This LFSR is synchronized with the transmitter because it
       // starts at the same value and only increments when a value
       // shows up.
       val reg = Module(new LFSR(word_bits))
-      reg.io.increment := io.rx(i).valid
+      reg.io.increment := io.rx(i).valid & ~io.rx(i).bits.control
 
       val word = reg.io.bits(word_bits-1, 0)
 
-      when (io.rx(i).valid & (word != io.rx(i).bits)) {
+      when (io.rx(i).valid && (~io.rx(i).bits.control) && (word != io.rx(i).bits.bits)) {
         io.pass := Bool(false)
       }
 
-      when (word != io.rx(i).bits) {
+      when (word != io.rx(i).bits.bits && (~io.rx(i).bits.control)) {
         io.sync := Bool(false)
       }
     }
@@ -206,7 +206,7 @@ package SerialTests {
     }
 
     // This line breaks the loopback test
-    word_verifier.io.rx(channel_count / 2).bits := word_generator.io.tx(channel_count / 2).bits | UInt(1 << (word_bits / 2))
+    word_verifier.io.rx(channel_count / 2).bits.bits := word_generator.io.tx(channel_count / 2).bits.bits | UInt(1 << (word_bits / 2))
   }
 
   class FailingWordLoopbackTester(dut: SerialTests.WordLoopback, channel_count: Int)

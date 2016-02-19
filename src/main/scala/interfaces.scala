@@ -30,11 +30,19 @@ package Serial {
     val channels = Vec.fill(channel_count){new PhyChannel(encoded_word_bits)}
   }
 
+  // Wrap word_bits with an additional control bool to indicate a control symbol
+  class SerialSymbol(word_bits: Int) extends Bundle {
+    val bits = Bits(width = word_bits)
+    val control = Bool()
+
+    override def cloneType = new SerialSymbol(word_bits).asInstanceOf[this.type]
+  }
+
   // Contains a single serial channel, which is a full-duplex pair of
   // decoupled words.
   class SerialChannel(word_bits: Int) extends Bundle {
-    val tx = Decoupled(Bits(width = word_bits)).flip()
-    val rx = Decoupled(Bits(width = word_bits))
+    val tx = Decoupled(new SerialSymbol(word_bits)).flip()
+    val rx = Decoupled(new SerialSymbol(word_bits))
   }
 
   // The control interface to the serial controller.  This itself

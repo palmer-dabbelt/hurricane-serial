@@ -84,7 +84,7 @@ package Serial {
     when (lo_c && hi_c) {
       io.valid   := Bool(true)
       io.control := Bool(true)
-      io.decoded := vHGFc(2, 0)
+      io.decoded := Cat(vHGFc(2, 0), vEDCBAc(4, 0))
     }
     when (lo_d && hi_d) {
       io.valid   := Bool(true)

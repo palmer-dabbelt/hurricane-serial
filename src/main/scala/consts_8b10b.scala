@@ -1,3 +1,5 @@
+import Chisel._
+
 package Serial {
   // Constants required to make an 8b/10b codec.
   object Consts8b10b {
@@ -62,5 +64,18 @@ package Serial {
           "K.x.5    101     0101    1010",
           "K.x.6    110     1001    0110",
           "K.x.7    111     0111    1000")
+
+    // decoded control symbols
+    val K_28_0 = UInt("b00011100")
+    val K_28_1 = UInt("b00111100")
+    val K_28_2 = UInt("b01011100")
+    val K_28_3 = UInt("b01111100")
+    val K_28_4 = UInt("b10011100")
+    val K_28_5 = UInt("b10111100")
+    val K_28_6 = UInt("b11011100")
+    // K.28.7 is illegal in this implementation
+    // Pick one of the two commas (the other being K.28.1)
+    // This particular comma is better with clock recovery because it has more transitions
+    val COMMA  = this.K_28_5
   }
 }

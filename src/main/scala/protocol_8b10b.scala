@@ -72,26 +72,16 @@ package Serial {
 
     private val dec = Module(new Decoder8b10b)
     dec.io.encoded := (rxbuf >> skew_from_before)(9, 0)
-    io.ctl.rx.bits := dec.io.decoded
-    io.ctl.rx.valid := dec.io.valid && !dec.io.control && skew_detected
+    io.ctl.rx.bits.bits := dec.io.decoded
+    io.ctl.rx.valid := dec.io.valid && skew_detected
+    io.ctl.rx.bits.control := dec.io.control
 
     // Tx
     private val enc = Module(new Encoder8b10b)
-    enc.io.decoded := io.ctl.tx.bits
+    enc.io.decoded := Mux(io.ctl.tx.valid && skew_detected, io.ctl.tx.bits.bits, Consts8b10b.COMMA)
+    enc.io.control := (~io.ctl.tx.valid) || (~skew_detected) || io.ctl.tx.bits.control
     io.phy.tx_data := enc.io.encoded
     io.ctl.tx.ready := skew_detected
-    when (io.ctl.tx.valid === Bool(false) && enc.io.balance === UInt(0)) {
-      io.phy.tx_data := UInt("b1101111100")
-    }
-    when (io.ctl.tx.valid === Bool(false) && enc.io.balance === UInt(1)) {
-      io.phy.tx_data := UInt("b0010110000")
-    }
-    when (skew_detected === Bool(false) && enc.io.balance === UInt(0)) {
-      io.phy.tx_data := UInt("b1101111100")
-    }
-    when (skew_detected === Bool(false) && enc.io.balance === UInt(1)) {
-      io.phy.tx_data := UInt("b0010110000")
-    }
   }
 }
 
@@ -104,18 +94,18 @@ package SerialTests {
     val skew = UInt(INPUT, width = 8)
 
     // Output signals for debugging
-    val tx_ready = Vec.fill(channel_count){ Bool(OUTPUT) }
-    val tx_valid = Vec.fill(channel_count){ Bool(OUTPUT) }
-    val tx_count = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
-    val tx_data  = Vec.fill(channel_count){ UInt(OUTPUT, width = 8) }
-    val tx_enc   = Vec.fill(channel_count){ UInt(OUTPUT, width = 10) }
-    val rx_ready = Vec.fill(channel_count){ Bool(OUTPUT) }
-    val rx_valid = Vec.fill(channel_count){ Bool(OUTPUT) }
-    val rx_count = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
-    val rx_data  = Vec.fill(channel_count){ UInt(OUTPUT, width = 8) }
-    val rx_enc   = Vec.fill(channel_count){ UInt(OUTPUT, width = 10) }
-    val rx_skct  = Vec.fill(channel_count){ UInt(OUTPUT, width = log2Up(10)) }
-    val rx_skval = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val tx_ready   = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val tx_valid   = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val tx_count   = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
+    val tx_data    = Vec.fill(channel_count){ UInt(OUTPUT, width = 8) }
+    val tx_control = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val rx_ready   = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val rx_valid   = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val rx_count   = Vec.fill(channel_count){ UInt(OUTPUT, width = 32) }
+    val rx_data    = Vec.fill(channel_count){ UInt(OUTPUT, width = 8) }
+    val rx_control = Vec.fill(channel_count){ Bool(OUTPUT) }
+    val rx_skct    = Vec.fill(channel_count){ UInt(OUTPUT, width = log2Up(10)) }
+    val rx_skval   = Vec.fill(channel_count){ Bool(OUTPUT) }
   }
 
   class Serial8b10bControllerLoopback extends Module {
@@ -154,19 +144,19 @@ package SerialTests {
         rx_count(i) := rx_count(i) + UInt(1)
       }
 
-      io.tx_ready(i) := serial.io.ctl.channels(i).tx.ready
-      io.tx_valid(i) := gen.io.tx(i).valid
-      io.tx_count(i) := tx_count(i)
-      io.tx_data(i)  := gen.io.tx(i).bits
-//      io.tx_enc(i)   := serial.io.phy.channels(i).tx_data
+      io.tx_ready(i)   := serial.io.ctl.channels(i).tx.ready
+      io.tx_valid(i)   := gen.io.tx(i).valid
+      io.tx_count(i)   := tx_count(i)
+      io.tx_data(i)    := gen.io.tx(i).bits.bits
+      io.tx_control(i) := serial.io.ctl.channels(i).tx.bits.control
 
-      io.rx_ready(i) := ver.io.rx(i).ready
-      io.rx_valid(i) := serial.io.ctl.channels(i).rx.valid
-      io.rx_count(i) := rx_count(i)
-      io.rx_data(i)  := serial.io.ctl.channels(i).rx.bits
-//      io.rx_enc(i)   := serial.io.phy.channels(i).rx_data
-      io.rx_skct(i)  := serial.io.skew_count(i)
-      io.rx_skval(i) := serial.io.skew_found(i)
+      io.rx_ready(i)   := ver.io.rx(i).ready
+      io.rx_valid(i)   := serial.io.ctl.channels(i).rx.valid
+      io.rx_count(i)   := rx_count(i)
+      io.rx_data(i)    := serial.io.ctl.channels(i).rx.bits.bits
+      io.rx_control(i) := serial.io.ctl.channels(i).rx.bits.control
+      io.rx_skct(i)    := serial.io.skew_count(i)
+      io.rx_skval(i)   := serial.io.skew_found(i)
     }
 
     private val pass = Reg(init = Bool(true))
@@ -183,13 +173,13 @@ package SerialTests {
       (0 until 8).map{ i => peek(dut.io.tx_ready(i)) }
       (0 until 8).map{ i => peek(dut.io.tx_valid(i)) }
       (0 until 8).map{ i => peek(dut.io.tx_count(i)) }
+      (0 until 8).map{ i => peek(dut.io.tx_control(i)) }
       (0 until 8).map{ i => peek(dut.io.tx_data(i)) }
-      (0 until 8).map{ i => peek(dut.io.tx_enc(i)) }
       (0 until 8).map{ i => peek(dut.io.rx_ready(i)) }
       (0 until 8).map{ i => peek(dut.io.rx_valid(i)) }
       (0 until 8).map{ i => peek(dut.io.rx_count(i)) }
       (0 until 8).map{ i => peek(dut.io.rx_data(i)) }
-      (0 until 8).map{ i => peek(dut.io.rx_enc(i)) }
+      (0 until 8).map{ i => peek(dut.io.rx_control(i)) }
       (0 until 8).map{ i => peek(dut.io.rx_skct(i)) }
       (0 until 8).map{ i => peek(dut.io.rx_skval(i)) }
       require(peek(dut.io.pass) == 1)
