@@ -36,6 +36,10 @@ package Serial {
     val control = Bool()
 
     override def cloneType = new SerialSymbol(word_bits).asInstanceOf[this.type]
+
+    def isComma(dummy: Int = 0): Bool = ((bits === Consts8b10b.COMMA) & control)
+    def isControl(dummy: Int = 0): Bool = control
+    def isData(dummy: Int = 0): Bool = ~control
   }
 
   // Contains a single serial channel, which is a full-duplex pair of
