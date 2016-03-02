@@ -84,7 +84,7 @@ package Serial {
 
     // This encodes the running disparity, where "0" means a RD of
     // "-1", and "1" means a RD of "1".
-    private val rd = Reg(init = UInt(0, width = 1))
+    private val rd = Reg(UInt(width = 1))
 
     private val EDCBA = io.decoded(4, 0)
     private val HGF   = io.decoded(7, 5)
