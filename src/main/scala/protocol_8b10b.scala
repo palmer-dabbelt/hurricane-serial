@@ -78,7 +78,7 @@ package Serial {
 
     // Tx
     private val enc = Module(new Encoder8b10b)
-    enc.io.decoded := Mux(io.ctl.tx.valid && skew_detected, io.ctl.tx.bits.bits, Consts8b10b.COMMA)
+    enc.io.decoded := Mux(io.ctl.tx.valid, io.ctl.tx.bits.bits, Consts8b10b.COMMA)
     enc.io.control := (~io.ctl.tx.valid) || (~skew_detected) || io.ctl.tx.bits.control
     io.phy.tx_data := enc.io.encoded
     io.ctl.tx.ready := skew_detected
