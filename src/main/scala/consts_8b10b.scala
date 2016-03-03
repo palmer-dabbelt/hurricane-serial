@@ -78,7 +78,7 @@ package Serial {
     // Pick one of the two commas (the other being K.28.1)
     // This particular comma is better with clock recovery because it has more transitions
     val COMMA  = this.K_28_5
-    val COMMA_ENC_0 = UInt("b0011111010")
+    val COMMA_ENC_0 = UInt("b1100000101")
     val COMMA_ENC_1 = ~COMMA_ENC_0
   }
 }
