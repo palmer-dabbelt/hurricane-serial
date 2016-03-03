@@ -46,8 +46,8 @@ package Serial {
     val io = new Channel8b10bControllerIO
 
     // Rx
-    private val previous_rx_data = Reg(init = Bits(0, width = 10))
-    previous_rx_data := io.phy.rx_data
+    val previous_rx_data = Reg(next = io.phy.rx_data)
+    val previous2_rx_data = Reg(next = previous_rx_data)
 
     val rxbuf = Cat(previous_rx_data, previous2_rx_data)
 
