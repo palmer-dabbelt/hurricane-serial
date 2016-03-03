@@ -51,31 +51,31 @@ package Serial {
 
       Vec(set)
     }
-    private val lookup_6b5b_d = generate_lookup(Consts8b10b.mapping_5b6b, "1")
-    private val lookup_6b5b_c = generate_lookup(Consts8b10b.control_5b6b, "1")
-    private val lookup_4b3b_d = generate_lookup(Consts8b10b.mapping_3b4b, "1")
-    private val lookup_4b3b_c = generate_lookup(Consts8b10b.control_3b4b, "1")
+    val lookup_6b5b_d = generate_lookup(Consts8b10b.mapping_5b6b, "1")
+    val lookup_6b5b_c = generate_lookup(Consts8b10b.control_5b6b, "1")
+    val lookup_4b3b_d = generate_lookup(Consts8b10b.mapping_3b4b, "1")
+    val lookup_4b3b_c = generate_lookup(Consts8b10b.control_3b4b, "1")
 
     // These signal names match the Wikipedia entry, but none of the
     // other ones do.
-    private val abcdei = io.encoded(9, 4)
-    private val fgjh   = io.encoded(3, 0)
+    val abcdei = io.encoded(9, 4)
+    val fgjh   = io.encoded(3, 0)
 
     // The lookups are actually a bit complicated here: each half of
     // the encoded word goes into two tables, one to decode data words
     // and the other to decode the control words.
-    private val vEDCBAd = lookup_6b5b_d(abcdei)
-    private val vEDCBAc = lookup_6b5b_c(abcdei)
-    private val vHGFd   = lookup_4b3b_d(fgjh)
-    private val vHGFc   = lookup_4b3b_c(fgjh)
+    val vEDCBAd = lookup_6b5b_d(abcdei)
+    val vEDCBAc = lookup_6b5b_c(abcdei)
+    val vHGFd   = lookup_4b3b_d(fgjh)
+    val vHGFc   = lookup_4b3b_c(fgjh)
 
     // Each of the lookup tables actually has an extra bit attached to
     // the top that is TRUE whenever the encoded part-word matches in
     // that lookup table.
-    private val lo_c = vEDCBAc(5)
-    private val lo_d = vEDCBAd(5)
-    private val hi_c = vHGFc(3)
-    private val hi_d = vHGFd(3)
+    val lo_c = vEDCBAc(5)
+    val lo_d = vEDCBAd(5)
+    val hi_c = vHGFc(3)
+    val hi_d = vHGFd(3)
 
     // 
     io.valid   := Bool(false)

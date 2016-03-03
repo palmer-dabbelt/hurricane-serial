@@ -49,7 +49,7 @@ package Serial {
     private val previous_rx_data = Reg(init = Bits(0, width = 10))
     previous_rx_data := io.phy.rx_data
 
-    private val rxbuf = Cat(previous_rx_data, io.phy.rx_data)
+    val rxbuf = Cat(previous_rx_data, previous2_rx_data)
 
     private val skew_detected = Reg(init = Bool(false))
     private val skew_from_before = Reg(init = UInt(0, width = log2Up(10)))
