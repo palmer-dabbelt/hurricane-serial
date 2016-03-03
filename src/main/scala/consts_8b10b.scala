@@ -58,21 +58,22 @@ package Serial {
     val control_3b4b =
       Seq("K.x.0    000     1011    0100",
           "K.x.1    001     0110    1001",
-          "K.x.2    010     1010    0101",
+      //  "K.x.2    010     1010    0101",
           "K.x.3    011     1100    0011",
           "K.x.4    100     1101    0010",
           "K.x.5    101     0101    1010",
-          "K.x.6    110     1001    0110",
-          "K.x.7    111     0111    1000")
+      //  "K.x.6    110     1001    0110",
+          "K.x.7    111     0111    1000"
+	  )
 
     // decoded control symbols
     val K_28_0 = UInt("b00011100")
     val K_28_1 = UInt("b00111100")
-    val K_28_2 = UInt("b01011100")
+    //val K_28_2 = UInt("b01011100")
     val K_28_3 = UInt("b01111100")
     val K_28_4 = UInt("b10011100")
     val K_28_5 = UInt("b10111100")
-    val K_28_6 = UInt("b11011100")
+    //val K_28_6 = UInt("b11011100")
     // K.28.7 is illegal in this implementation
     // Pick one of the two commas (the other being K.28.1)
     // This particular comma is better with clock recovery because it has more transitions
