@@ -53,7 +53,7 @@ package Serial {
 
     private val skew_detected = Reg(init = Bool(false))
     private val skew_from_before = Reg(init = UInt(0, width = log2Up(10)))
-    private val skew = (0 until 10).map(i => (rxbuf(i+9, i) === UInt("b1101111100")) || (rxbuf(i+9, i) === UInt("b0010110000")))
+    private val skew = (0 until 10).map(i => (rxbuf(i+9, i) === Consts8b10b.COMMA_ENC_0) || (rxbuf(i+9, i) === Consts8b10b.COMMA_ENC_1))
     when (skew_detected === Bool(false)) {
       skew_detected := skew.foldLeft(Bool(false)){ (a, b) => a | b }
       when (skew(0)) { skew_from_before := UInt(0) }
