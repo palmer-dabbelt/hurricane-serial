@@ -73,18 +73,20 @@ package Serial {
 
     val rd = Reg(init = Bool(false))
 
-    when (dec.io.encoded === Consts8b10b.COMMA_ENC_0) {
+    val encoded_in = (rxbuf >> skew_from_before)(9, 0)
+
+    when (encoded_in === Consts8b10b.COMMA_ENC_0) {
       // if we see this comma, the RD was 0, so now it is 1
       rd := UInt(1)
-    } .elsewhen (dec.io.encoded === Consts8b10b.COMMA_ENC_1) {
+    } .elsewhen (encoded_in === Consts8b10b.COMMA_ENC_1) {
       // if we see this comma, the RD was 1, so now it is 0
       rd := UInt(0)
     } .otherwise {
-      rd := rd ^ (PopCount(dec.io.encoded) =/= PopCount(~dec.io.encoded))
+      rd := rd ^ (PopCount(encoded_in) =/= PopCount(~encoded_in))
     }
 
     private val dec = Module(new Decoder8b10b)
-    dec.io.encoded := (rxbuf >> skew_from_before)(9, 0)
+    dec.io.encoded := encoded_in
     io.ctl.rx.bits.bits := dec.io.decoded
     io.ctl.rx.valid := dec.io.valid && skew_detected
     io.ctl.rx.bits.control := dec.io.control

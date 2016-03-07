@@ -1,4 +1,5 @@
 import Chisel._
+import scala.collection.mutable.HashMap
 
 package Serial {
   // A single 8b/10b encoder/decoder, attached to the phy (for actual
@@ -48,21 +49,21 @@ package Serial {
           })
       Vec.tabulate(1 << (n+1)) { i =>
         if (map contains i)
-          UInt((map(i) << (n-1)) + 1, width = n) else UInt(0, width = n)
+          UInt((map(i) << 1) + 1, width = n) else UInt(0, width = n)
       }
     }
 
-    private def has_alt(sym: UInt): UInt = {
-      Consts8b10b.mapping3b4b
-        .map(_.split(" +")
+    private def has_alt(sym: UInt): Bool = {
+      Consts8b10b.mapping_3b4b
+        .map(_.split(" +"))
         .map(seq => seq.map(element => element.trim))
         .filter(seq => seq.size match {
           case 3 => false
           case 4 => false
           case 6 => true
-        }).foldLeft(Bool(false))( (out,seq) =>
+        }).foldLeft(Bool(false)) { (out,seq) =>
           out | (sym === UInt(s"b${seq(2)}")) | (sym === UInt(s"b${seq(3)}"))
-        )
+        }
     }
 
     val lookup_6b5b_d  = generate_lookup(Consts8b10b.mapping_5b6b,6)
@@ -86,7 +87,7 @@ package Serial {
     // This assumes that the alternate encodings exist for codes ending in
     // run lengths of two
     val use_alt = abcdei(1,0) === Cat(~new_rd,~new_rd) && has_alt(fgjh)
-    val alt_fgjh = Mux(use_alt,Cat(vHGFd(1),vHGFd(2),vHGFd(3),vHGFd(4)),vHGFd(4,1))
+    val alt_fgjh = Mux(use_alt,Cat(fgjh(0),fgjh(1),fgjh(2),fgjh(3)),fgjh)
 
     val vHGFd   = lookup_4b3b_d(Cat(alt_fgjh,new_rd))
     val vHGFc   = lookup_4b3b_c(Cat(alt_fgjh,new_rd))
@@ -105,12 +106,12 @@ package Serial {
     when (lo_c && hi_c) {
       io.valid   := Bool(true)
       io.control := Bool(true)
-      io.decoded := Cat(vHGFc(4, 1), vEDCBAc(5, 1))
+      io.decoded := Cat(vHGFc(3, 1), vEDCBAc(4, 1))
     }
     when (lo_d && hi_d) {
       io.valid   := Bool(true)
       io.control := Bool(false)
-      io.decoded := Cat(vHGFd(4, 1), vEDCBAd(5, 1))
+      io.decoded := Cat(vHGFd(3, 1), vEDCBAd(4, 1))
     }
   }
 }
