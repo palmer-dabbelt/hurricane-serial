@@ -136,6 +136,17 @@ package SerialTests {
   import scala.collection.mutable.Set
 
   class Encoder8b10bTester(dut: Serial.Encoder8b10b) extends Tester(dut) {
+    // Another property of the encoded bitstream is that there is a
+    // limit of 5 consecutive bits of the same value
+    def encoded_to_bitstring(encoded: BigInt): String = {
+      (0 until 10).map{i =>
+        if (i < encoded.bitLength && encoded.testBit(i))
+          "1"
+        else
+          "0"
+      }.mkString("").reverse
+    }
+
     // Here we just go ahead and encode a bunch of stuff, with the
     // goal that we eventually get good coverage.
     val d2e = new HashMap[BigInt, Set[BigInt]] with MultiMap[BigInt, BigInt]
@@ -170,22 +181,12 @@ package SerialTests {
         else
           zeroes += 1
       }
-      require(math.abs(zeroes - ones) < 2)
+      require(math.abs(zeroes - ones) < 2,
+              s"Incorrect DC balance, ${zeroes} zeroes and ${ones} ones after ${encoded_to_bitstring(encoded)}")
       if (zeroes > ones)
         require(peek(dut.io.balance) == 0)
       else
         require(peek(dut.io.balance) == 1)
-
-      // Another property of the encoded bitstream is that there is a
-      // limit of 5 consecutive bits of the same value
-      def encoded_to_bitstring(encoded: BigInt): String = {
-        (0 until 10).map{i =>
-          if (i < encoded.bitLength && encoded.testBit(i))
-            "1"
-          else
-            "0"
-        }.mkString("").reverse
-      }
 
       def string_trunc_or_dont(in: String, end: Int): String = {
         if (in.length <= end)
@@ -204,8 +205,10 @@ package SerialTests {
 
       // The additional logic inside check_run() should ensure that
       // these patterns also can't exist.
-      require(prev_bits.contains("0011111") == false)
-      require(prev_bits.contains("1100000") == false)
+      require(prev_bits.contains("0011111") == false,
+              "Detected a long run in ${encoded_to_bitstring(encoded)}")
+      require(prev_bits.contains("1100000") == false,
+              "Detected a long run in ${encoded_to_bitstring(encoded)}")
     }
   }
 
