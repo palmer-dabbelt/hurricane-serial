@@ -4,10 +4,6 @@ version := "0.0.0-git"
 
 name := "hurricane-serial"
 
-//scalaVersion := "2.11.6"
+scalaVersion := "2.11.7"
 
-//libraryDependencies += "edu.berkeley.cs" %% "chisel" % "latest.release"
-
-//lazy val chisel          = project
-
-//lazy val serial = (project in file(".")).dependsOn(chisel)
+libraryDependencies += "edu.berkeley.cs" %% "chisel" % "latest.release"
