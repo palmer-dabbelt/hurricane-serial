@@ -40,6 +40,7 @@ package Serial {
     val on  = Bool(INPUT)
     val skew_found = Bool(OUTPUT)
     val skew_count = UInt(OUTPUT, width = log2Up(10))
+    val lock = Bool(INPUT)
   }
 
   class Channel8b10bController extends Module {
@@ -53,7 +54,7 @@ package Serial {
 
     private val skew_detected = Reg(init = Bool(false))
     private val skew_from_before = Reg(init = UInt(0, width = log2Up(10)))
-    private val skew = (0 until 10).map(i => (rxbuf(i+9, i) === Consts8b10b.COMMA_ENC_0) || (rxbuf(i+9, i) === Consts8b10b.COMMA_ENC_1))
+    private val skew = (0 until 10).map(i => ((rxbuf(i+9, i) === Consts8b10b.COMMA_ENC_0) || (rxbuf(i+9, i) === Consts8b10b.COMMA_ENC_1)) && ~io.lock)
       skew_detected := skew_detected | skew.foldLeft(Bool(false)){ (a, b) => a | b }
       when (skew(0)) { skew_from_before := UInt(0) }
       when (skew(1)) { skew_from_before := UInt(1) }
@@ -67,6 +68,8 @@ package Serial {
       when (skew(9)) { skew_from_before := UInt(9) }
     io.skew_count := skew_from_before
     io.skew_found := skew_detected
+
+    assert(~(skew.foldLeft(Bool(false)) { (a,b) => a | b } && io.lock), "Skew is locked but changes")
 
     private val dec = Module(new Decoder8b10b)
     dec.io.encoded := (rxbuf >> skew_from_before)(9, 0)
