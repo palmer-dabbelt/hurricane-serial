@@ -86,6 +86,7 @@ package Serial {
     }
 
     private val dec = Module(new Decoder8b10b)
+    dec.io.rd := rd
     dec.io.encoded := encoded_in
     io.ctl.rx.bits.bits := dec.io.decoded
     io.ctl.rx.valid := dec.io.valid && skew_detected
