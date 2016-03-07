@@ -48,7 +48,7 @@ package Serial {
     private def lookup(table: Vec[UInt], decoded_word: UInt,
                        rd: UInt, run: UInt) = {
       table(decoded_word * UInt(Consts8b10b.max_mapping_word_width) +
-            rd ^ UInt(0) +
+            rd ^ UInt(1) +
             run * UInt(2)
           )
     }
