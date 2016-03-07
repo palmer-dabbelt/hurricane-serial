@@ -9,87 +9,108 @@ package Serial {
     val encoded = Bits(INPUT,  width = 10)
     val control = Bool(OUTPUT)
     val valid   = Bool(OUTPUT)
+    val rd      = Bool(INPUT)
   }
 
   class Decoder8b10b extends Module {
     val io = new Decoder8b10bIO()
 
-    // Generates lookup tables that do the encoding, by turning the
-    // strings I copied from Wikipedia to Vec[Bits], and then
-    // generating a ROM.  This ROM is yet another union: the top bit
-    // is "valid", which outputs whether or not this is a valid
-    // codeword, the next bit is "kind", which is "1" when this is a
-    // data word, and the remaining bits are the data.
-    private def generate_lookup(description: Seq[String], prefix: String) = {
-      val table_depth_bits = description(0).split(" +")(2).trim.size
-      val table_width_bits = description(0).split(" +")(1).trim.size
+    // generates an inverse lookup table (except for alt codes)
+    //  input is of the format {encoded,rd} (n bits + 1 bit)
+    //  output is of the format {decoded,valid} (n-1 bits + 1 bit)
+    private def generate_lookup(desc: Seq[String], n: Int): Vec[UInt] = {
+      val map = new HashMap[Int,Int]
+      desc.map(_.split(" +"))
+          .map(seq => seq.map(element => element.trim))
+          .map(seq => seq.size match {
+            case 3 => {
+              val enc    = Integer.parseInt(seq(2),2) << 1
+              map(enc)   = Integer.parseInt(seq(1),2)
+              map(enc+1) = Integer.parseInt(seq(1),2)
+            }
+            case 4 => {
+              val enc0  = Integer.parseInt(seq(2),2) << 1
+              val enc1  = Integer.parseInt(seq(3),2) << 1 + 1
+              map(enc0) = Integer.parseInt(seq(1),2)
+              map(enc1) = Integer.parseInt(seq(1),2)
+            }
+            case 6 => {
+              // XXX This is the same as 4, and the assumption is that
+              // the latter two entries are just mirror images of the first two
+              val enc0  = Integer.parseInt(seq(2),2) << 1
+              val enc1  = Integer.parseInt(seq(3),2) << 1 + 1
+              map(enc0) = Integer.parseInt(seq(1),2)
+              map(enc1) = Integer.parseInt(seq(1),2)
 
-      def description_to_pairs(listing: Seq[String]): Map[Int, UInt] = {
-        listing
-        .map(_.split(" +"))
-        .map(vec => vec.map(element => element.trim))
-        .map(vec => vec.size match {
-          case 3 => Seq(Seq(vec(1), vec(2)))
-          case 4 => Seq(Seq(vec(1), vec(2)), Seq(vec(1), vec(3)))
-          case 6 => Seq(Seq(vec(1), vec(2)), Seq(vec(1), vec(3)),
-                        Seq(vec(1), vec(4)), Seq(vec(1), vec(5)))
-                      })
-        .flatten
-        .map(v => Seq(v(1), v(0)))
-        .map(v => Seq(v(0), prefix + v(1)))
-        .map(_ match { case Seq(a, b) => (Integer.parseInt(a, 2), UInt("b" + b)) })
-        .toMap
+              require(seq(2).reverse equals seq(4))
+              require(seq(3).reverse equals seq(5))
+            }
+          })
+      Vec.tabulate(1 << (n+1)) { i =>
+        if (map contains i)
+          UInt((map(i) << (n-1)) + 1, width = n) else UInt(0, width = n)
       }
-
-      val map = (
-        description_to_pairs(description)
-      ).withDefault( i => UInt(0) )
-
-      val set = (0 until (1 << (table_depth_bits))).map{
-        i => map(i)
-      }
-
-      Vec(set)
     }
-    val lookup_6b5b_d = generate_lookup(Consts8b10b.mapping_5b6b, "1")
-    val lookup_6b5b_c = generate_lookup(Consts8b10b.control_5b6b, "1")
-    val lookup_4b3b_d = generate_lookup(Consts8b10b.mapping_3b4b, "1")
-    val lookup_4b3b_c = generate_lookup(Consts8b10b.control_3b4b, "1")
+
+    private def has_alt(sym: UInt): UInt = {
+      Consts8b10b.mapping3b4b
+        .map(_.split(" +")
+        .map(seq => seq.map(element => element.trim))
+        .filter(seq => seq.size match {
+          case 3 => false
+          case 4 => false
+          case 6 => true
+        }).foldLeft(Bool(false))( (out,seq) =>
+          out | (sym === UInt(s"b${seq(2)}")) | (sym === UInt(s"b${seq(3)}"))
+        )
+    }
+
+    val lookup_6b5b_d  = generate_lookup(Consts8b10b.mapping_5b6b,6)
+    val lookup_6b5b_c  = generate_lookup(Consts8b10b.control_5b6b,6)
+    val lookup_4b3b_d  = generate_lookup(Consts8b10b.mapping_3b4b,4)
+    val lookup_4b3b_c  = generate_lookup(Consts8b10b.control_3b4b,4)
 
     // These signal names match the Wikipedia entry, but none of the
     // other ones do.
     val abcdei = io.encoded(9, 4)
     val fgjh   = io.encoded(3, 0)
 
+    val new_rd = io.rd ^ (PopCount(abcdei) =/= PopCount(~abcdei))
+
     // The lookups are actually a bit complicated here: each half of
     // the encoded word goes into two tables, one to decode data words
     // and the other to decode the control words.
-    val vEDCBAd = lookup_6b5b_d(abcdei)
-    val vEDCBAc = lookup_6b5b_c(abcdei)
-    val vHGFd   = lookup_4b3b_d(fgjh)
-    val vHGFc   = lookup_4b3b_c(fgjh)
+    val vEDCBAd = lookup_6b5b_d(Cat(abcdei,io.rd))
+    val vEDCBAc = lookup_6b5b_c(Cat(abcdei,io.rd))
+
+    // This assumes that the alternate encodings exist for codes ending in
+    // run lengths of two
+    val use_alt = abcdei(1,0) === Cat(~new_rd,~new_rd) && has_alt(fgjh)
+    val alt_fgjh = Mux(use_alt,Cat(vHGFd(1),vHGFd(2),vHGFd(3),vHGFd(4)),vHGFd(4,1))
+
+    val vHGFd   = lookup_4b3b_d(Cat(alt_fgjh,new_rd))
+    val vHGFc   = lookup_4b3b_c(Cat(alt_fgjh,new_rd))
 
     // Each of the lookup tables actually has an extra bit attached to
     // the top that is TRUE whenever the encoded part-word matches in
     // that lookup table.
-    val lo_c = vEDCBAc(5)
-    val lo_d = vEDCBAd(5)
-    val hi_c = vHGFc(3)
-    val hi_d = vHGFd(3)
+    val lo_c = vEDCBAc(0)
+    val lo_d = vEDCBAd(0)
+    val hi_c = vHGFc(0)
+    val hi_d = vHGFd(0)
 
-    // 
     io.valid   := Bool(false)
     io.control := Bool(false)
     io.decoded := UInt(0)
     when (lo_c && hi_c) {
       io.valid   := Bool(true)
       io.control := Bool(true)
-      io.decoded := Cat(vHGFc(2, 0), vEDCBAc(4, 0))
+      io.decoded := Cat(vHGFc(4, 1), vEDCBAc(5, 1))
     }
     when (lo_d && hi_d) {
       io.valid   := Bool(true)
       io.control := Bool(false)
-      io.decoded := Cat(vHGFd(2, 0), vEDCBAd(4, 0))
+      io.decoded := Cat(vHGFd(4, 1), vEDCBAd(5, 1))
     }
   }
 }

@@ -45,13 +45,7 @@ package Serial {
 
     // This helper function hides the exact indexing order from my
     // user below, so I don't have to have a huge line in there.
-    private def lookup(table: Vec[UInt], decoded_word: UInt,
-                       rd: UInt, run: UInt) = {
-      table(decoded_word * UInt(Consts8b10b.max_mapping_word_width) +
-            rd ^ UInt(0) +
-            run * UInt(2)
-          )
-    }
+    private def lookup(table: Vec[UInt], decoded_word: UInt, rd: Bool, run: Bool): UInt = { table(Cat(decoded_word,rd,run)) }
 
     // Checks to see if there's the same number of 1's and 0's, or a
     // different number.
@@ -63,28 +57,11 @@ package Serial {
     // for the given input/rd combination -- this presumes some amount
     // of encoding table information, so you can't change those
     // without changing this!
-    private def check_run(x: UInt, rd: UInt) = {
-      // FIXME: This shouldn't just be "10", but I figure that's long
-      // enough?  If I set it to something shorter then the indexing
-      // code actually truncates this, which is a pain.
-      val run = UInt(width = 10)
-      run := UInt(0)
-      when (rd === UInt(1)) {
-        when ((x === UInt(11)) || (x === UInt(13)) || (x === UInt(14))) {
-          run := UInt(1)
-        }
-      }
-      when (rd === UInt(0)) {
-        when ((x === UInt(17)) || (x === UInt(18)) || (x === UInt(20))) {
-          run := UInt(1)
-        }
-      }
-      run
-    }
+    private def check_run(x: UInt, rd: Bool): Bool = { x(1,0) === Cat(~rd,~rd) }
 
     // This encodes the running disparity, where "0" means a RD of
     // "-1", and "1" means a RD of "1".
-    private val rd = Reg(init = UInt(0, width = 1))
+    private val rd = Reg(init = Bool(false))
 
     private val EDCBA = io.decoded(4, 0)
     private val HGF   = io.decoded(7, 5)
@@ -92,7 +69,7 @@ package Serial {
     private val abcdei = lookup(lookup_5b6b_d,
                                 EDCBA,
                                 rd,
-                                UInt(0))
+                                Bool(false))
     private val rd_after_abcdei = rd ^ mismatched(abcdei)
     private val fgjh   = lookup(lookup_3b4b_d,
                                 HGF,
@@ -102,7 +79,7 @@ package Serial {
     private val abcdei_c = lookup(lookup_5b6b_c,
                                   EDCBA,
                                   rd,
-                                  UInt(0))
+                                  Bool(false))
     private val rd_after_abcdei_c = rd ^ mismatched(abcdei_c)
     private val fgjh_c   = lookup(lookup_3b4b_c,
                                   HGF,

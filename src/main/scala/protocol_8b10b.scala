@@ -71,6 +71,18 @@ package Serial {
 
     assert(~(skew.foldLeft(Bool(false)) { (a,b) => a | b } && io.lock), "Skew is locked but changes")
 
+    val rd = Reg(init = Bool(false))
+
+    when (dec.io.encoded === Consts8b10b.COMMA_ENC_0) {
+      // if we see this comma, the RD was 0, so now it is 1
+      rd := UInt(1)
+    } .elsewhen (dec.io.encoded === Consts8b10b.COMMA_ENC_1) {
+      // if we see this comma, the RD was 1, so now it is 0
+      rd := UInt(0)
+    } .otherwise {
+      rd := rd ^ (PopCount(dec.io.encoded) =/= PopCount(~dec.io.encoded))
+    }
+
     private val dec = Module(new Decoder8b10b)
     dec.io.encoded := (rxbuf >> skew_from_before)(9, 0)
     io.ctl.rx.bits.bits := dec.io.decoded
