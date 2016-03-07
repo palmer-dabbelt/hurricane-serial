@@ -27,7 +27,7 @@ package Serial {
         !(2 to (i - 1)).exists(x => i % x == 0)
     }
     private val prime_stream = 2 #:: Stream.from(3,2).filter(prime_p)
-    private val primes = prime_stream.takeWhile(_ <= bit_width).toArray
+    private val primes = prime_stream.takeWhile(_ < bit_width).toArray
 
     // The final part is just an XOR reduction of the prime-indexed
     // bits inside the register, with an extra check to make sure
@@ -51,17 +51,17 @@ package Serial {
     for (i <- 0 until channel_count) {
       // Generates a random sequence that sometimes spits out a valid
       // data item -- this tests the decoupled IO part.
-      val valid = Module(new LFSR(20))
-      valid.io.increment := Bool(true)
-      io.tx(i).valid := valid.io.bits(5)
+      val valid = Reg(init = UInt(0, width=32))
+      valid := valid + UInt(1)
+      io.tx(i).valid := valid > UInt(1024)
 
-      val reg = Module(new LFSR(word_bits))
+      val reg = Module(new LFSR(45))
       io.tx(i).bits.bits := reg.io.bits
       io.tx(i).bits.control := UInt(0)
 
       // In order to stay synchronized with the reciever we need to
       // only bump the data LFSR when something is actually sent.
-      reg.io.increment := (valid.io.bits(5) & io.tx(i).ready)
+      reg.io.increment := (valid > UInt(1024)) && io.tx(i).ready
     }
   }
 
@@ -88,7 +88,7 @@ package Serial {
       // This LFSR is synchronized with the transmitter because it
       // starts at the same value and only increments when a value
       // shows up.
-      val reg = Module(new LFSR(word_bits))
+      val reg = Module(new LFSR(45))
       reg.io.increment := io.rx(i).valid & ~io.rx(i).bits.control
 
       val word = reg.io.bits(word_bits-1, 0)
@@ -148,7 +148,7 @@ package SerialTests {
 
   class PassingWordLoopbackTester(dut: SerialTests.WordLoopback, channel_count: Int)
   extends Tester(dut) {
-    val iterations = (1 << 16)
+    val iterations = (1 << 20)
 
     for (t <- 0 until iterations) {
       step(1)
@@ -211,7 +211,7 @@ package SerialTests {
 
   class FailingWordLoopbackTester(dut: SerialTests.WordLoopback, channel_count: Int)
   extends Tester(dut) {
-    for (t <- 0 until 10240) {
+    for (t <- 0 until (1 << 16)) {
       step(1)
     }
 
