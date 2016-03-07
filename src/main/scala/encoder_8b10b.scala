@@ -71,12 +71,12 @@ package Serial {
       run := UInt(0)
       when (rd === UInt(0)) {
         when ((x === UInt(11)) || (x === UInt(13)) || (x === UInt(14))) {
-          run := UInt(0)
+          run := UInt(1)
         }
       }
       when (rd === UInt(1)) {
         when ((x === UInt(17)) || (x === UInt(18)) || (x === UInt(20))) {
-          run := UInt(0)
+          run := UInt(1)
         }
       }
       run
